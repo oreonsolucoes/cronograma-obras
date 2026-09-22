@@ -175,6 +175,7 @@
     'auth/too-many-requests': 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.',
     'auth/network-request-failed': 'Sem conexão com a internet.',
     'auth/operation-not-allowed': 'O login por e-mail e senha não está ativado no projeto Firebase.',
+    'auth/configuration-not-found': 'O Authentication ainda não foi ativado no Firebase. No console: Authentication > Vamos começar > Método de login > ative E-mail/senha.',
     'auth/operation-not-supported-in-this-environment': 'Este navegador bloqueou o login ao abrir o arquivo direto. Publique o sistema em um endereço http(s).',
     'auth/unauthorized-domain': 'Este endereço não está autorizado no Firebase (Authentication > Settings > Domínios autorizados).',
     'auth/api-key-not-valid.-please-pass-a-valid-api-key.': 'Chave de API inválida no firebase-config.js.',
@@ -273,7 +274,7 @@
   // ── Aplicar dados vindos da nuvem ──
   function applyState(data) {
     Cloud.applying = true;
-    state = Object.assign({ projectName: 'Sem nome', supervisorName: '', tasks: [], nextId: 1, relatorios: [], relNextId: 1 }, data, { ownerUid: Cloud.user.uid });
+    state = Object.assign({ projectName: '', supervisorName: '', tasks: [], nextId: 1, relatorios: [], relNextId: 1 }, data, { ownerUid: Cloud.user.uid });
     if (!Array.isArray(state.tasks)) state.tasks = [];
     if (!Array.isArray(state.relatorios)) state.relatorios = [];
     projectNameEl.value = state.projectName;
@@ -332,9 +333,9 @@
         applyState(local); Cloud.lastSynced = null; Cloud.queueSave(); toast('Alterações feitas sem internet foram enviadas para a nuvem.', 3500);
       } else {
         // primeira vez nesta conta: aproveita o projeto local (se for deste usuário ou ainda sem dono)
-        const usable = local && Array.isArray(local.tasks) && local.tasks.length && (!local.ownerUid || local.ownerUid === uid);
-        if (usable) applyState(local);
-        else { applyState({}); loadSampleData(); render(); }
+        const hasLocal = local && Array.isArray(local.tasks) && local.tasks.length && (!local.ownerUid || local.ownerUid === uid);
+        const usable = hasLocal && confirm('Encontramos neste navegador um projeto salvo' + (local.projectName ? ' ("' + local.projectName + '")' : '') + ' com ' + local.tasks.length + ' etapa(s).\n\nOK = levar este projeto para a sua conta\nCancelar = começar com um projeto em branco');
+        applyState(usable ? local : {});
         Cloud.lastSynced = null; Cloud.queueSave(); flushNow();
         if (usable) toast('Seu projeto local foi enviado para a nuvem.', 3500);
       }
@@ -372,116 +373,218 @@
   //  TOUR GUIADO
   // ════════════════════════════════════════════════
   function defineTour() {
+    const $q = s => document.querySelector(s);
+    const modalOpen = () => typeof modalOverlay !== 'undefined' && !modalOverlay.hidden;
+    const nTasks = () => state.tasks.length;
+    const tabActive = t => { const b = $q('.modal-tab[data-tab="' + t + '"]'); return b && b.classList.contains('active'); };
+    const ctx = {};
+
+    // Cada passo: el (destaque), anchor (onde posicionar o balão), wait (condição que avança sozinho),
+    // ready (condição que libera o botão Próximo), needModal (volta ao passo "back" se o formulário fechar)
     const STEPS = [
-      { title: 'Bem-vindo ao Oreon Cronograma', text: 'Em poucos passos você vai conhecer onde montar o cronograma da obra, acompanhar o andamento e gerar os relatórios para o cliente. Leva cerca de um minuto.' },
-      { el: '#project-name', title: 'Nome da obra', text: 'Clique para editar o nome do projeto. Ele aparece no topo do cronograma e em todos os relatórios em PDF.' },
-      { el: '#header-supervisor', title: 'Responsável técnico', text: 'Informe quem responde pela obra. O nome sai no rodapé dos relatórios e no campo de assinatura.' },
-      { el: '#btn-new-task', title: 'Cadastrar atividades', text: 'Crie cada etapa da obra com duração em dias úteis e antecessoras. O término é calculado sozinho, pulando fins de semana e feriados nacionais.' },
-      { el: '#table-panel', title: 'Lista de atividades', text: 'Dê duplo clique numa linha para editar e atualizar o percentual concluído. Arraste as linhas para mudar a ordem.' },
-      { el: '#gantt-panel', title: 'Gráfico de Gantt', text: 'Mostra a linha do tempo da obra com as dependências entre atividades. Passe o mouse sobre uma barra para ver os detalhes.', place: 'left' },
-      { el: '#zoom-controls', title: 'Navegar no tempo', text: 'Aproxime ou afaste a escala do Gantt. O botão Hoje leva direto para a data atual.' },
-      { el: '#view-relatorio', title: 'Relatório semanal', text: 'Toda semana: crie a semana, marque o que foi executado, anote as ocorrências e exporte o PDF com indicadores, curva S e cronograma.' },
-      { el: '#btn-export-pdf', title: 'Cronograma em PDF', text: 'Gera o cronograma completo em PDF para enviar ao cliente.' },
-      { el: '#btn-export-json', title: 'Cópia editável', text: 'Exporta o projeto em um arquivo que pode ser importado de volta depois, útil como backup ou para enviar a outra pessoa.' },
-      { el: '#sync-status', title: 'Onde ficam os dados', text: enabled ? 'Aqui você acompanha a sincronização. Tudo o que você altera é salvo na sua conta e aparece em qualquer computador em que você entrar.' : 'Neste modo os dados ficam salvos apenas neste navegador. Faça cópias com Exportar JSON de vez em quando.', place: 'top' },
-      { el: enabled ? '#user-menu' : '#btn-tour', title: 'Pronto para começar', text: enabled ? 'No menu da sua conta você pode rever este tour, alterar a senha ou sair. O projeto de exemplo pode ser apagado em Limpar quando quiser começar o seu.' : 'Para rever este tour, use o botão Ajuda. O projeto de exemplo pode ser apagado em Limpar quando quiser começar o seu.' },
+      { key: 'intro', title: 'Vamos montar sua primeira obra', text: 'Neste passo a passo você vai usar o sistema de verdade: dar nome à obra, criar duas etapas, atualizar o andamento e montar o relatório da semana. Leva uns 3 minutos. O que for criado fica no seu projeto e pode ser apagado depois.', btn: 'Começar' },
+
+      { key: 'nome', el: '#project-name', title: 'Dê um nome à obra', text: 'Clique no campo destacado, digite o nome da obra (por exemplo, o nome do condomínio) e tecle Enter.',
+        enter() { ctx.name0 = state.projectName; setTimeout(() => projectNameEl.focus(), 300); },
+        wait: () => !!state.projectName && state.projectName !== ctx.name0, done: 'Nome salvo. Ele aparece em todos os relatórios.' },
+
+      { key: 'resp', el: '#header-supervisor', title: 'Quem é o responsável?', text: 'Digite o nome do responsável técnico e tecle Enter. Ele sai no rodapé e na assinatura dos relatórios.',
+        enter() { ctx.sup0 = state.supervisorName; setTimeout(() => { const i = $q('#supervisor-name'); i && i.focus(); }, 300); },
+        wait: () => !!state.supervisorName && state.supervisorName !== ctx.sup0, skip: true, done: 'Anotado.' },
+
+      { key: 'nova1', el: '#btn-new-task', title: 'Crie a primeira etapa', text: 'Clique em Nova Tarefa.', enter() { ctx.count = nTasks(); }, wait: modalOpen },
+
+      { key: 'nome1', el: '#f-name', anchor: '#modal', title: 'Nome da etapa', text: 'Digite o nome da primeira etapa da obra. Ex.: Passagem de infraestrutura.',
+        needModal: true, back: 'nova1', ready: () => $q('#f-name').value.trim().length >= 3, jumpIf: () => nTasks() > ctx.count, jumpTo: 'ver1' },
+
+      { key: 'dur1', el: '#f-dur', anchor: '#modal', title: 'Quanto tempo leva?', text: 'Informe a duração em dias úteis. Repare que o campo Fim se ajusta sozinho, pulando fins de semana e feriados.',
+        needModal: true, back: 'nova1', ready: () => +$q('#f-dur').value > 0, jumpIf: () => nTasks() > ctx.count, jumpTo: 'ver1' },
+
+      { key: 'ini1', el: '#f-start', anchor: '#modal', title: 'Quando começa?', text: 'Escolha a data e a hora de início. O sistema já sugere amanhã às 8h.',
+        needModal: true, back: 'nova1', ready: () => !!$q('#f-start').value, jumpIf: () => nTasks() > ctx.count, jumpTo: 'ver1' },
+
+      { key: 'add1', el: '#modal-save', anchor: '#modal', title: 'Adicione a etapa', text: 'Clique em Adicionar.', needModal: true, back: 'nova1', wait: () => nTasks() > ctx.count },
+
+      { key: 'ver1', el: '#main', title: 'Pronto, veja o resultado', text: 'A etapa entrou na lista à esquerda e virou uma barra no Gantt, do início ao término. A linha tracejada azul marca o dia de hoje.',
+        enter() { ctx.t1 = state.tasks[state.tasks.length - 1]; }, btn: 'Próximo' },
+
+      { key: 'nova2', el: '#btn-new-task', title: 'Agora uma etapa que depende da primeira', text: 'Clique em Nova Tarefa de novo. Esta segunda etapa só pode começar quando a primeira terminar.', enter() { ctx.count = nTasks(); }, wait: modalOpen },
+
+      { key: 'nome2', el: '#f-name', anchor: '#modal', title: 'Nome da segunda etapa', text: 'Digite o nome. Ex.: Instalação dos equipamentos.',
+        needModal: true, back: 'nova2', ready: () => $q('#f-name').value.trim().length >= 3 },
+
+      { key: 'aba2', el: '.modal-tab[data-tab="tab-pred"]', anchor: '#modal', title: 'Ligue as etapas', text: 'Abra a aba Antecessores.', needModal: true, back: 'nova2', wait: () => tabActive('tab-pred') },
+
+      { key: 'pred2', el: '#pred-list', anchor: '#modal', title: 'Escolha a antecessora', text: 'Marque a primeira etapa. Assim esta só começa depois que aquela terminar.',
+        needModal: true, back: 'nova2', wait: () => !!$q('#pred-list input:checked') },
+
+      { key: 'add2', el: '#modal-save', anchor: '#modal', title: 'Adicione', text: 'Clique em Adicionar.', needModal: true, back: 'nova2', wait: () => nTasks() > ctx.count },
+
+      { key: 'ver2', el: '#gantt-panel', place: 'left', title: 'O sistema encaixou a sequência', text: 'A segunda etapa foi posicionada logo depois do término da primeira, e a seta mostra a dependência. Se a primeira mudar de data, a segunda acompanha.', btn: 'Próximo' },
+
+      { key: 'edit', el: () => ctx.t1 && $q('#task-body tr[data-id="' + ctx.t1.id + '"]'), title: 'Atualize o andamento', text: 'Dê um duplo clique na primeira etapa para abrir a edição.', wait: () => modalOpen() && editingId !== null },
+
+      { key: 'abaAv', el: '.modal-tab[data-tab="tab-adv"]', anchor: '#modal', title: 'Aba Avançado', text: 'Abra a aba Avançado.', needModal: true, back: 'edit', wait: () => tabActive('tab-adv') },
+
+      { key: 'pct', el: () => $q('#f-pct') && $q('#f-pct').closest('.field-group'), anchor: '#modal', title: 'Quanto já foi feito?', text: 'Arraste a barra até o percentual executado, por exemplo 40%. Aqui também dá para informar o responsável pela etapa.',
+        needModal: true, back: 'edit', ready: () => +$q('#f-pct').value > 0 },
+
+      { key: 'salvar', el: '#modal-save', anchor: '#modal', title: 'Salve', text: 'Clique em Salvar e veja a barra no Gantt.', needModal: true, back: 'edit', wait: () => !modalOpen() && ctx.t1 && (state.tasks.find(t => t.id === ctx.t1.id) || {}).percentComplete > 0 },
+
+      { key: 'ver3', el: '#gantt-panel', place: 'left', title: 'O andamento aparece na barra', text: 'A parte escura da barra mostra o quanto foi executado. Quando chegar a 100%, a barra fica verde.', btn: 'Próximo' },
+
+      { key: 'rel', el: '#view-relatorio', title: 'Relatório semanal', text: 'Clique em Rel. Semanal. É aqui que você registra a semana para enviar ao cliente.', wait: () => typeof currentView !== 'undefined' && currentView === 'relatorio', enter() { ctx.rels = state.relatorios.length; } },
+
+      { key: 'semana', el: '#btn-rel-new', title: 'Abra a semana', text: 'Clique em Nova Semana. O período de segunda a domingo é preenchido sozinho.', wait: () => state.relatorios.length > ctx.rels },
+
+      { key: 'check', el: () => $q('#rel-list .rel-card input[type=checkbox]') && $q('#rel-list .rel-card input[type=checkbox]').closest('div[style*="max-height"]'), title: 'O que foi feito?', text: 'Marque as etapas em que a equipe trabalhou nesta semana.',
+        wait: () => !!$q('#rel-list .rel-card input[type=checkbox]:checked') },
+
+      { key: 'obs', el: '#rel-list .rel-card textarea', title: 'Ocorrências', text: 'Se houve algo importante (chuva, falta de material, pedido do cliente), anote aqui. Se não houve, pode seguir.', btn: 'Próximo', enter() { setTimeout(() => { const t = $q('#rel-list .rel-card textarea'); t && t.focus(); }, 300); } },
+
+      { key: 'pdf', el: '#rel-list .rel-card [data-pdf-rel]', title: 'Gere o PDF do cliente', text: 'Clique em Exportar PDF. Sai um resumo de uma página, pronto para mandar por e-mail ou WhatsApp. O botão Completo gera a versão detalhada.',
+        enter() { ctx.pdf = false; const b = $q('#rel-list .rel-card [data-pdf-rel]'); b && b.addEventListener('click', () => { ctx.pdf = true; }, { once: true }); }, wait: () => ctx.pdf, skip: true },
+
+      { key: 'fim', title: 'Tudo pronto!', text: 'Você montou a obra, criou etapas ligadas entre si, atualizou o andamento e gerou o relatório da semana. Na rotina é só isso: atualizar o percentual das etapas e, no fim da semana, marcar o que foi feito e exportar o PDF. Para rever este guia, use o botão Ajuda.', btn: 'Concluir' },
     ];
+    const idx = k => STEPS.findIndex(s => s.key === k);
 
-    let i = 0, active = false, onDone = null, key = 'local';
-    let spot, pop, back;
+    let i = 0, active = false, onDone = null, key = 'local', tick = null, lastRect = '', leftModalAt = 0, advancing = false;
+    let spot, pop;
 
-    const build = () => {
-      back = document.createElement('div'); back.className = 'tour-back';
+    const resolve = sel => typeof sel === 'function' ? sel() : (sel ? $q(sel) : null);
+    const visible = el => el && el.getClientRects().length > 0 && el.getBoundingClientRect().width > 0;
+
+    function build() {
       spot = document.createElement('div'); spot.className = 'tour-spot';
       pop = document.createElement('div'); pop.className = 'tour-pop'; pop.setAttribute('role', 'dialog');
-      document.body.append(back, spot, pop);
+      document.body.append(spot, pop);
       pop.addEventListener('click', e => {
-        const a = e.target.dataset.t;
-        if (a === 'next') go(i + 1);
-        if (a === 'prev') go(i - 1);
-        if (a === 'skip') end();
+        const a = e.target.closest('[data-t]'); if (!a) return;
+        const t = a.dataset.t;
+        if (t === 'next' && !a.disabled) go(i + 1);
+        if (t === 'skip') go(i + 1);
+        if (t === 'close') end(false);
       });
-    };
-
-    const visible = el => el && el.offsetParent !== null && el.getBoundingClientRect().width > 0;
+    }
 
     function place() {
       const s = STEPS[i];
-      const el = s.el && document.querySelector(s.el);
+      const el = resolve(s.el);
+      const anchor = s.anchor ? $q(s.anchor) : null;
       const vw = innerWidth, vh = innerHeight;
-      pop.style.visibility = 'hidden'; pop.style.display = 'block';
       const pw = pop.offsetWidth, ph = pop.offsetHeight;
+      let key2;
       if (!el || !visible(el)) {
         spot.style.cssText = `left:${vw / 2}px;top:${vh / 2}px;width:0;height:0;`;
         pop.style.left = Math.round((vw - pw) / 2) + 'px'; pop.style.top = Math.round((vh - ph) / 2) + 'px';
         pop.dataset.arrow = 'none';
-      } else {
-        el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        const r = el.getBoundingClientRect(), pad = 6;
-        const sx = Math.max(4, r.left - pad), sy = Math.max(4, r.top - pad);
-        const sw = Math.min(vw - 8, r.width + pad * 2), sh = Math.min(vh - 8, r.height + pad * 2);
-        spot.style.cssText = `left:${sx}px;top:${sy}px;width:${sw}px;height:${sh}px;`;
-        let x, y, arrow;
-        const fitsBelow = sy + sh + 12 + ph < vh, fitsAbove = sy - 12 - ph > 0;
-        if (s.place === 'left' && sx - 16 - pw > 0) { x = sx - 14 - pw; y = sy + Math.min(sh / 2 - ph / 2, 40); arrow = 'right'; }
-        else if (s.place === 'top' && fitsAbove) { x = sx; y = sy - 12 - ph; arrow = 'bottom'; }
-        else if (fitsBelow) { x = sx; y = sy + sh + 12; arrow = 'top'; }
-        else if (fitsAbove) { x = sx; y = sy - 12 - ph; arrow = 'bottom'; }
-        else { x = sx + sw - pw - 16; y = sy + 16; arrow = 'none'; }
-        x = Math.max(12, Math.min(x, vw - pw - 12)); y = Math.max(12, Math.min(y, vh - ph - 12));
-        pop.style.left = Math.round(x) + 'px'; pop.style.top = Math.round(y) + 'px';
-        pop.dataset.arrow = arrow;
-        pop.style.setProperty('--ax', Math.max(18, Math.min(pw - 18, sx + Math.min(sw, 60) / 2 - x)) + 'px');
+        return;
       }
-      pop.style.visibility = '';
+      const r = el.getBoundingClientRect(), pad = 5;
+      const sx = Math.max(3, r.left - pad), sy = Math.max(3, r.top - pad);
+      const sw = Math.min(vw - 6, r.width + pad * 2), sh = Math.min(vh - 6, r.height + pad * 2);
+      key2 = [sx, sy, sw, sh, pw, ph].map(Math.round).join(',');
+      if (key2 === lastRect) return;
+      lastRect = key2;
+      spot.style.cssText = `left:${sx}px;top:${sy}px;width:${sw}px;height:${sh}px;`;
+      let x, y, arrow = 'none';
+      if (anchor && visible(anchor)) {
+        const a = anchor.getBoundingClientRect();
+        if (a.right + 16 + pw < vw) { x = a.right + 16; arrow = 'left'; }
+        else if (a.left - 16 - pw > 0) { x = a.left - 16 - pw; arrow = 'right'; }
+        else { x = vw - pw - 12; }
+        y = Math.min(Math.max(12, r.top + r.height / 2 - 28), vh - ph - 12);
+        pop.style.setProperty('--ay', Math.max(14, Math.min(ph - 14, r.top + r.height / 2 - y)) + 'px');
+      } else {
+        const below = sy + sh + 12 + ph < vh, above = sy - 12 - ph > 0;
+        if (s.place === 'left' && sx - 16 - pw > 0) { x = sx - 14 - pw; y = sy + Math.min(sh / 2 - ph / 2, 40); arrow = 'right'; pop.style.setProperty('--ay', '22px'); }
+        else if (below) { x = sx; y = sy + sh + 12; arrow = 'top'; }
+        else if (above) { x = sx; y = sy - 12 - ph; arrow = 'bottom'; }
+        else { x = sx + sw - pw - 16; y = sy + 16; }
+        pop.style.setProperty('--ax', Math.max(18, Math.min(pw - 18, sx + Math.min(sw, 60) / 2 - Math.max(12, Math.min(x, vw - pw - 12)))) + 'px');
+      }
+      x = Math.max(12, Math.min(x, vw - pw - 12)); y = Math.max(12, Math.min(y, vh - ph - 12));
+      pop.style.left = Math.round(x) + 'px'; pop.style.top = Math.round(y) + 'px';
+      pop.dataset.arrow = arrow;
+    }
+
+    function draw() {
+      const s = STEPS[i], last = i === STEPS.length - 1;
+      const total = STEPS.length - 2; // sem intro e fim
+      const num = Math.min(Math.max(i, 1), total);
+      const pct = Math.round(Math.max(0, i - 0) / (STEPS.length - 1) * 100);
+      const action = !!s.wait;
+      pop.innerHTML = `
+        ${s.key !== 'intro' && !last ? `<div class="tp-step">Passo ${num} de ${total}</div>` : ''}
+        <h3>${esc(s.title)}</h3>
+        <p>${esc(s.text)}</p>
+        <div class="tp-done" hidden></div>
+        <div class="tp-bar"><i style="width:${pct}%"></i></div>
+        <div class="tp-foot">
+          <div class="tp-hint">${action ? '<span class="tp-pulse"></span>Aguardando você' : s.ready ? 'Preencha para continuar' : ''}</div>
+          <div class="tp-btns">
+            ${s.skip ? `<button type="button" class="tp-ghost" data-t="skip">Pular</button>` : ''}
+            ${action ? '' : `<button type="button" class="tp-main" data-t="next" ${s.ready ? 'disabled' : ''}>${s.btn || (last ? 'Concluir' : 'Próximo')}</button>`}
+          </div>
+        </div>
+        ${last ? '' : `<button type="button" class="tp-close" data-t="close" title="Sair do guia">×</button>`}`;
+      lastRect = '';
+      place();
     }
 
     function go(n) {
-      if (n < 0) return;
       if (n >= STEPS.length) return end(true);
-      i = n;
-      const s = STEPS[i], last = i === STEPS.length - 1;
-      const dots = STEPS.map((_, k) => `<i class="${k === i ? 'on' : k < i ? 'done' : ''}"></i>`).join('');
-      pop.innerHTML = `
-        <div class="tp-step">Passo ${i + 1} de ${STEPS.length}</div>
-        <h3>${esc(s.title)}</h3>
-        <p>${esc(s.text)}</p>
-        <div class="tp-foot">
-          <div class="tp-dots">${dots}</div>
-          <div class="tp-btns">
-            ${i === 0 ? `<button type="button" class="tp-ghost" data-t="skip">Pular</button>` : `<button type="button" class="tp-ghost" data-t="prev">Voltar</button>`}
-            <button type="button" class="tp-main" data-t="next">${i === 0 ? 'Começar' : last ? 'Concluir' : 'Próximo'}</button>
-          </div>
-        </div>
-        ${i > 0 && !last ? `<button type="button" class="tp-close" data-t="skip" title="Encerrar tour">×</button>` : ''}`;
-      place();
-      pop.querySelector('.tp-main').focus();
+      i = Math.max(0, n);
+      advancing = false; leftModalAt = 0;
+      const s = STEPS[i];
+      if (s.enter) s.enter();
+      draw();
     }
 
-    function onKey(e) {
-      if (!active) return;
-      if (e.key === 'Escape') end();
-      if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); go(i + 1); }
-      if (e.key === 'ArrowLeft') go(i - 1);
+    function succeed() {
+      const s = STEPS[i];
+      advancing = true;
+      if (s.done) {
+        const d = pop.querySelector('.tp-done'); d.textContent = s.done; d.hidden = false;
+        const h = pop.querySelector('.tp-hint'); if (h) h.innerHTML = '';
+        setTimeout(() => active && go(i + 1), 1100);
+      } else setTimeout(() => active && go(i + 1), 350);
     }
-    const onResize = () => active && place();
+
+    function loop() {
+      if (!active) return;
+      const s = STEPS[i];
+      if (!advancing) {
+        if (s.jumpIf && s.jumpIf()) { go(idx(s.jumpTo)); return; }
+        if (s.needModal && !modalOpen()) {
+          if (!leftModalAt) leftModalAt = Date.now();
+          else if (Date.now() - leftModalAt > 700) { go(idx(s.back)); return; }
+        } else leftModalAt = 0;
+        if (s.wait && s.wait()) succeed();
+        if (s.ready) { const b = pop.querySelector('[data-t=next]'); if (b) b.disabled = !s.ready(); }
+      }
+      place();
+    }
 
     function end(completed) {
       active = false;
-      document.removeEventListener('keydown', onKey, true);
-      removeEventListener('resize', onResize);
-      [back, spot, pop].forEach(n => n && n.remove());
+      clearInterval(tick);
+      removeEventListener('resize', place);
+      [spot, pop].forEach(n => n && n.remove());
       try { localStorage.setItem('oreon_tour_done_' + key, '1'); } catch (e) {}
       if (onDone) onDone();
-      if (completed) toast('Tour concluído. Use o botão Ajuda para rever quando quiser.', 3200);
+      if (completed) toast('Guia concluído. O botão Ajuda abre ele de novo quando quiser.', 3200);
+      else toast('Guia encerrado. Para retomar, use o botão Ajuda.', 3000);
     }
 
     function start() {
       if (active) return;
       if (typeof setView === 'function') setView('gantt');
+      if (modalOpen()) closeModal();
       active = true; build(); go(0);
-      document.addEventListener('keydown', onKey, true);
-      addEventListener('resize', onResize);
+      tick = setInterval(loop, 250);
+      addEventListener('resize', place);
     }
 
     window.Tour = {
@@ -490,7 +593,7 @@
         key = k || 'local'; onDone = cb || null;
         let doneLocal = false;
         try { doneLocal = localStorage.getItem('oreon_tour_done_' + key) === '1'; } catch (e) {}
-        if (!doneLocal && !doneRemote) setTimeout(start, 500);
+        if (!doneLocal && !doneRemote) setTimeout(start, 600);
       },
     };
   }

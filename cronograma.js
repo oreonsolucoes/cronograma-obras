@@ -113,7 +113,7 @@ function isWeekend(date) { const d = date.getDay(); return d === 0 || d === 6; }
 function dateKey(date) { return date.toISOString().slice(0,10); }
 
 // ── Estado ──
-let state = { projectName: 'CONDOMÍNIO PIEMONTE', supervisorName: '', tasks: [], nextId: 1, relatorios: [], relNextId: 1 };
+let state = { projectName: '', supervisorName: '', tasks: [], nextId: 1, relatorios: [], relNextId: 1 };
 let editingId = null;
 let selectedId = null;
 let DAY_W = 28; // px por dia — zoom
@@ -453,7 +453,8 @@ function renderGantt() {
 
     // Sombra + barra principal
     const barOpacity = isSelected ? '1' : '0.92';
-    const barColor = C.bar;
+    const pctT = Math.max(0, Math.min(100, task.percentComplete || 0));
+    const barColor = pctT >= 100 ? '#16a34a' : C.bar;
     const strokeColor = isSelected ? '#1d4ed8' : 'none';
     const strokeW = isSelected ? '2' : '0';
 
@@ -466,9 +467,12 @@ function renderGantt() {
       data-id="${task.id}"
       style="cursor:pointer"
     />`;
+    if (pctT > 0 && pctT < 100) {
+      svg += `<rect x="${x}" y="${y}" width="${bw * pctT / 100}" height="${bh}" rx="3" ry="3" fill="#0b1f5c" fill-opacity="0.45" pointer-events="none"/>`;
+    }
 
     // Duração label dentro da barra
-    const label = `${task.duration}d`;
+    const label = pctT > 0 ? `${pctT}%` : `${task.duration}d`;
     const labelX = x + bw / 2;
     const labelY = y + bh / 2 + 4;
     if (bw > 22) {
@@ -708,13 +712,14 @@ $('#btn-today').addEventListener('click', () => {
 // ── Views (handled by setView below) ──
 
 // ── Project name ──
+$('#supervisor-name').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
 $('#supervisor-name').addEventListener('change', () => {
   state.supervisorName = $('#supervisor-name').value.trim();
   save();
 });
 
 projectNameEl.addEventListener('change', () => {
-  state.projectName = projectNameEl.value.trim() || 'Sem nome';
+  state.projectName = projectNameEl.value.trim();
   projectNameEl.value = state.projectName; save(); toast('✏️ Nome atualizado');
 });
 
@@ -2287,7 +2292,6 @@ function exportRelatorioClientePDF(rel) {
 
 // ── Boot ──
 load();
-if (!state.tasks.length) loadSampleData();
 render();
 
 // Scroll inicial para início do projeto

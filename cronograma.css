@@ -523,7 +523,8 @@
   }
   .tour-pop[data-arrow=top]::before    { display: block; top: -6px; left: var(--ax, 24px); border-right: 0; border-bottom: 0; }
   .tour-pop[data-arrow=bottom]::before { display: block; bottom: -6px; left: var(--ax, 24px); border-left: 0; border-top: 0; }
-  .tour-pop[data-arrow=right]::before  { display: block; right: -6px; top: 22px; border-left: 0; border-bottom: 0; }
+  .tour-pop[data-arrow=right]::before  { display: block; right: -6px; top: calc(var(--ay, 22px) - 5px); border-left: 0; border-bottom: 0; }
+  .tour-pop[data-arrow=left]::before   { display: block; left: -6px; top: calc(var(--ay, 22px) - 5px); border-right: 0; border-top: 0; }
   .tp-step { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
   .tour-pop h3 { font-size: 15px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.005em; }
   .tour-pop p { font-size: 13px; line-height: 1.55; color: var(--text-2); margin: 0; }
@@ -540,3 +541,15 @@
   .tp-ghost:hover { color: var(--text); border-color: var(--border-2); }
   .tp-close { position: absolute; top: 8px; right: 10px; border: 0; background: none; color: var(--text-3); font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px; }
   .tp-close:hover { color: var(--text); }
+
+  /* ── Tour interativo ── */
+  .tour-spot { box-shadow: 0 0 0 2px var(--accent), 0 0 0 5px rgba(37,99,235,.25), 0 0 0 9999px rgba(2,6,23,.55); animation: spotPulse 1.8s ease-in-out infinite; }
+  @keyframes spotPulse { 50% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 8px rgba(37,99,235,.12), 0 0 0 9999px rgba(2,6,23,.55); } }
+  .tp-done { margin-top: 10px; padding: 7px 10px; border-radius: 6px; background: #ecfdf5; color: #047857; font-size: 12.5px; font-weight: 600; border: 1px solid #a7f3d0; }
+  .tp-done[hidden] { display: none; }
+  .tp-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 14px; overflow: hidden; }
+  .tp-bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+  .tp-foot { margin-top: 12px; }
+  .tp-hint { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-2); font-weight: 500; }
+  .tp-pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: syncPulse 1s ease-in-out infinite; }
+  .tp-main:disabled { opacity: .45; cursor: not-allowed; }
