@@ -1,0 +1,14 @@
+rules_version = '2';
+// Cada usuário só lê e grava os próprios dados:
+//   users/{uid}                      -> perfil (nome, e-mail, tour)
+//   users/{uid}/projetos/principal   -> cronograma + relatórios
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+      match /{doc=**} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+  }
+}
