@@ -1239,7 +1239,8 @@ function renderRelatorios() {
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span style="font-size:12px;background:rgba(255,255,255,0.15);padding:3px 10px;border-radius:20px;">${checkedCount} / ${totalTasks} tarefas concluídas esta semana</span>
-          <button class="btn btn-primary" data-pdf-rel="${rel.id}" style="font-size:12px;padding:5px 12px;">📄 Exportar PDF</button>
+          <button class="btn btn-primary" data-pdf-rel="${rel.id}" style="font-size:12px;padding:5px 12px;" title="Resumo de uma página para enviar ao cliente">📄 Exportar PDF</button>
+          <button class="btn btn-ghost" data-pdf-full="${rel.id}" style="font-size:12px;padding:5px 12px;" title="Relatório detalhado com indicadores, curva S e tabela de atividades">📊 Completo</button>
           <button class="btn btn-danger" data-del-rel="${rel.id}" style="font-size:12px;padding:5px 10px;background:var(--danger);border:none;color:#fff;border-radius:6px;cursor:pointer;">🗑</button>
         </div>
       </div>
@@ -1339,6 +1340,12 @@ function renderRelatorios() {
   listEl.querySelectorAll('[data-pdf-rel]').forEach(btn => {
     btn.addEventListener('click', () => {
       const rel = state.relatorios.find(r => r.id == btn.dataset.pdfRel);
+      if (rel) exportRelatorioClientePDF(rel);
+    });
+  });
+  listEl.querySelectorAll('[data-pdf-full]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rel = state.relatorios.find(r => r.id == btn.dataset.pdfFull);
       if (rel) exportRelatorioPDF(rel);
     });
   });
@@ -2021,6 +2028,261 @@ function exportRelatorioPDF(rel) {
   const safe = (state.projectName || 'Projeto').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '');
   doc.save(`Relatorio_Semanal_${reportNo}_${safe}_${(rel.weekStart || '').replace(/-/g, '')}.pdf`);
   toast('📄 Relatório PDF exportado!');
+}
+
+// ── Relatório para o cliente: uma página, leitura rápida ──
+function exportRelatorioClientePDF(rel) {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    toast('Biblioteca de PDF não carregou. Verifique a conexão com a internet.', 3500);
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+  const PW = 297, PH = 210, ML = 14, MR = 14, CW = PW - ML - MR;
+
+  const C = {
+    navy: [39, 40, 103], navy2: [72, 76, 160], ink: [28, 30, 44], gray: [96, 100, 116], gray2: [150, 154, 168],
+    line: [224, 226, 233], bg: [245, 246, 249], white: [255, 255, 255], yellow: [253, 234, 0],
+    green: [22, 135, 72], greenL: [226, 243, 233], amber: [196, 124, 0], amberL: [253, 243, 220],
+    red: [192, 44, 44], redL: [250, 229, 229], navyL: [230, 231, 245],
+  };
+  const fill = c => doc.setFillColor(c[0], c[1], c[2]);
+  const stroke = c => doc.setDrawColor(c[0], c[1], c[2]);
+  const color = c => doc.setTextColor(c[0], c[1], c[2]);
+  const font = (st, sz) => { doc.setFont('helvetica', st); doc.setFontSize(sz); };
+  const fit = (txt, w) => { txt = String(txt || ''); if (doc.getTextWidth(txt) <= w) return txt; while (txt.length > 1 && doc.getTextWidth(txt + '...') > w) txt = txt.slice(0, -1); return txt.trimEnd() + '...'; };
+  const cap = s => { s = String(s || '').toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
+  const nice = s => { const t = String(s || ''); return t === t.toUpperCase() ? cap(t).replace(/\b(qdc|cftv|dvr|nvr|ups|ti)\b/gi, m => m.toUpperCase()) : t; };
+
+  // ── Datas e dias úteis ──
+  const dayOf = iso => { if (!iso) return null; const d = new Date(iso); d.setHours(0, 0, 0, 0); return d; };
+  const parseYMD = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const br = d => d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+  const brShort = d => d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '-';
+  const brLong = d => d ? d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+
+  const tasks = state.tasks.slice();
+  const starts = tasks.map(t => dayOf(t.start)).filter(Boolean), ends = tasks.map(t => dayOf(t.end)).filter(Boolean);
+  const projStart = starts.length ? new Date(Math.min(...starts)) : parseYMD(rel.weekStart);
+  const projEnd = ends.length ? new Date(Math.max(...ends)) : parseYMD(rel.weekEnd);
+  const weekStart = parseYMD(rel.weekStart), cutDate = parseYMD(rel.weekEnd);
+  const years = []; for (let y = projStart.getFullYear() - 1; y <= projEnd.getFullYear() + 1; y++) years.push(y);
+  const HOL = buildHolidaySet(years);
+  const isWork = d => !isWeekend(d) && !HOL.has(dateKey(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12)));
+  const workdays = (a, b) => { if (!a || !b || b < a) return 0; let n = 0; const d = new Date(a); while (d <= b) { if (isWork(d)) n++; d.setDate(d.getDate() + 1); } return n; };
+
+  // ── Histórico (mesma regra do relatório completo) ──
+  const rels = [...state.relatorios].sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+  const relIdx = rels.findIndex(r => r.id === rel.id);
+  if (relIdx === rels.length - 1 || !rel.snapshot) {
+    rel.snapshot = { takenAt: new Date().toISOString(), pct: {} };
+    tasks.forEach(t => { rel.snapshot.pct[t.id] = t.percentComplete || 0; });
+    save();
+  }
+  const reportNo = String(relIdx + 1).padStart(2, '0');
+  const realOf = t => { const v = rel.snapshot && rel.snapshot.pct ? rel.snapshot.pct[t.id] : undefined; return v === undefined ? (t.percentComplete || 0) : v; };
+
+  const isFase = t => t.taskType === 'fase', isMarco = t => t.taskType === 'marco';
+  const weightOf = t => isFase(t) || isMarco(t) ? 0 : Math.max(Number(t.duration) || 0, 1);
+  let totalW = tasks.reduce((s, t) => s + weightOf(t), 0);
+  const W = t => totalW ? weightOf(t) : 1; if (!totalW) totalW = tasks.length || 1;
+  const plannedAt = (t, ref) => { const s = dayOf(t.start), e = dayOf(t.end); if (!s || !e || ref < s) return 0; if (ref >= e) return 100; const tot = workdays(s, e); return tot ? Math.min(100, workdays(s, ref) / tot * 100) : 0; };
+  const weighted = fn => tasks.reduce((s, t) => s + W(t) * fn(t), 0) / totalW;
+  const realPct = weighted(realOf), planPct = weighted(t => plannedAt(t, cutDate)), dev = realPct - planPct;
+  const remainingWD = cutDate < projEnd ? workdays(addDays(cutDate, 1), projEnd) : 0;
+
+  const steps = tasks.filter(t => !isFase(t)).map(t => {
+    const re = realOf(t), pr = plannedAt(t, cutDate), s = dayOf(t.start), e = dayOf(t.end);
+    let st = re >= 100 ? 'done' : (pr - re >= 10 ? 'late' : re > 0 ? 'prog' : (pr > 0 ? 'late' : 'todo'));
+    return { t, re, pr, s, e, st, checked: !!(rel.taskChecks && rel.taskChecks[t.id]) };
+  });
+  const nDone = steps.filter(x => x.st === 'done').length;
+
+  let verdict;
+  if (dev > 2)        verdict = { tag: 'ADIANTADA',      c: C.green, bg: C.greenL, txt: 'A obra está à frente do planejado.' };
+  else if (dev >= -2) verdict = { tag: 'NO PRAZO',       c: C.green, bg: C.greenL, txt: 'A obra está dentro do planejado.' };
+  else if (dev >= -8) verdict = { tag: 'PEQUENO ATRASO', c: C.amber, bg: C.amberL, txt: 'A obra está um pouco abaixo do previsto para esta data.' };
+  else                verdict = { tag: 'ATRASADA',       c: C.red,   bg: C.redL,   txt: 'A obra está abaixo do previsto para esta data.' };
+  if (realPct >= 99.5) verdict = { tag: 'CONCLUÍDA', c: C.green, bg: C.greenL, txt: 'Todas as etapas foram concluídas.' };
+
+  const doneWeek = steps.filter(x => x.checked);
+  const nextA = addDays(cutDate, 1), nextB = addDays(cutDate, 7);
+  const nextWeek = steps.filter(x => x.re < 100 && x.s && x.e && ((x.s <= nextB && x.e >= nextA) || x.e < nextA));
+
+  // ── Fundo e cabeçalho ──
+  fill(C.bg); doc.rect(0, 0, PW, PH, 'F');
+  fill(C.navy); doc.rect(0, 0, PW, 20, 'F');
+  fill(C.yellow); doc.rect(0, 20, PW, 0.8, 'F');
+  if (typeof HAGANA_LOGO_B64 !== 'undefined' && HAGANA_LOGO_B64) { try { doc.addImage(HAGANA_LOGO_B64, 'PNG', ML, 3, 10.1, 14, 'hagana', 'FAST'); } catch (e) {} }
+  font('bold', 13); color(C.white); doc.text(fit((state.projectName || 'Obra').toUpperCase(), 170), ML + 15, 10);
+  font('normal', 8); doc.setTextColor(200, 202, 232); doc.text('Relatório semanal de andamento da obra', ML + 15, 15.2);
+  font('bold', 10); color(C.white); doc.text('Semana de ' + brShort(weekStart) + ' a ' + br(cutDate), PW - MR, 10, { align: 'right' });
+  font('normal', 8); doc.setTextColor(200, 202, 232); doc.text('Relatório nº ' + reportNo, PW - MR, 15.2, { align: 'right' });
+
+  // ── Faixa principal: andamento, situação, entrega ──
+  let y = 28;
+  const heroH = 44;
+  fill(C.white); stroke(C.line); doc.setLineWidth(0.25); doc.rect(ML, y, CW, heroH, 'FD');
+  // andamento
+  font('bold', 7.5); color(C.gray); doc.text('ANDAMENTO DA OBRA', ML + 8, y + 10, { charSpace: 0.3 });
+  font('bold', 38); color(C.ink); const bigTxt = Math.round(realPct) + '%'; doc.text(bigTxt, ML + 8, y + 27);
+  const bw = doc.getTextWidth(bigTxt);
+  font('normal', 10); color(C.gray); doc.text('concluída', ML + 10 + bw, y + 27);
+  // barra de progresso
+  const bx = ML + 8, by = y + 33, bW = 150, bH = 4.2;
+  fill(C.line); doc.roundedRect(bx, by, bW, bH, 2.1, 2.1, 'F');
+  fill(verdict.c); doc.roundedRect(bx, by, Math.max(bH, bW * Math.min(100, realPct) / 100), bH, 2.1, 2.1, 'F');
+  const px = bx + bW * Math.min(100, planPct) / 100;
+  fill(C.ink); doc.rect(px - 0.35, by - 1.8, 0.7, bH + 3.6, 'F');
+  font('normal', 6.8); color(C.gray); doc.text('previsto para esta data: ' + Math.round(planPct) + '%', Math.min(px, bx + bW - 30), by + bH + 5, { align: px > bx + bW - 30 ? 'left' : 'center' });
+
+  // separadores
+  stroke(C.line); doc.setLineWidth(0.25);
+  const c2 = ML + 170, c3 = ML + 226;
+  doc.line(c2, y + 7, c2, y + heroH - 7); doc.line(c3, y + 7, c3, y + heroH - 7);
+  // situação
+  font('bold', 7.5); color(C.gray); doc.text('SITUAÇÃO', c2 + 7, y + 10, { charSpace: 0.3 });
+  font('bold', 9); const tagW = doc.getTextWidth(verdict.tag) + 8;
+  fill(verdict.bg); doc.roundedRect(c2 + 7, y + 14.5, tagW, 7, 1.2, 1.2, 'F');
+  color(verdict.c); doc.text(verdict.tag, c2 + 11, y + 19.4);
+  font('normal', 8); color(C.ink); doc.text(doc.splitTextToSize(verdict.txt, c3 - c2 - 14), c2 + 7, y + 28.5, { lineHeightFactor: 1.35 });
+  font('normal', 7.2); color(C.gray); doc.text(nDone + ' de ' + steps.length + ' etapas concluídas', c2 + 7, y + heroH - 6);
+  // entrega
+  font('bold', 7.5); color(C.gray); doc.text('ENTREGA PREVISTA', c3 + 7, y + 10, { charSpace: 0.3 });
+  font('bold', 17); color(C.ink); doc.text(br(projEnd), c3 + 7, y + 22.5);
+  font('normal', 8); color(C.gray);
+  doc.text(realPct >= 99.5 ? 'Obra concluída' : remainingWD + ' dias úteis restantes', c3 + 7, y + 29);
+  font('normal', 7.2); doc.text('Início em ' + br(projStart), c3 + 7, y + heroH - 6);
+
+  // ── Etapas da obra ──
+  y += heroH + 5;
+  const colL = 168, bottom = PH - 14, lh = bottom - y;
+  fill(C.white); stroke(C.line); doc.rect(ML, y, colL, lh, 'FD');
+  font('bold', 10); color(C.ink); doc.text('Etapas da obra', ML + 8, y + 10);
+  const ST = {
+    done: { label: 'Concluída', c: C.green },
+    prog: { label: 'Em andamento', c: C.navy2 },
+    late: { label: 'Em atraso', c: C.red },
+    todo: { label: 'Prevista', c: C.gray2 },
+  };
+  // legenda
+  let lgx = ML + colL - 8;
+  ['todo', 'late', 'prog', 'done'].forEach(k => {
+    font('normal', 6.8); const w = doc.getTextWidth(ST[k].label);
+    lgx -= w; color(C.gray); doc.text(ST[k].label, lgx, y + 10);
+    lgx -= 4.5; fill(ST[k].c); doc.circle(lgx + 1.4, y + 9, 1.4, 'F'); lgx -= 5;
+  });
+  stroke(C.line); doc.line(ML + 8, y + 14, ML + colL - 8, y + 14);
+
+  const listTop = y + 16, listBot = y + lh - 4;
+  const maxRows = Math.floor((listBot - listTop) / 7.2);
+  let shown = steps;
+  if (steps.length > maxRows) {
+    // prioriza o que está acontecendo: em atraso / andamento, depois próximas, depois concluídas recentes
+    const firstOpen = Math.max(0, steps.findIndex(s => s.st !== 'done'));
+    const startIdx = Math.max(0, Math.min(firstOpen - 1, steps.length - (maxRows - 1)));
+    shown = steps.slice(startIdx, startIdx + maxRows - 1);
+  }
+  const rowH = Math.min(11, (listBot - listTop) / Math.max(shown.length + (shown.length < steps.length ? 1 : 0), 1));
+  const nameW = 86, stateX = ML + 8 + 8 + nameW + 6;
+  shown.forEach((s, i) => {
+    const ry = listTop + i * rowH, cy = ry + rowH / 2;
+    const sc = ST[s.st].c;
+    // linha vertical de ligação
+    if (i < shown.length - 1) { stroke(C.line); doc.setLineWidth(0.5); doc.line(ML + 11, cy + 2.4, ML + 11, cy + rowH - 2.4); }
+    // marcador
+    if (s.st === 'done') {
+      fill(sc); doc.circle(ML + 11, cy, 2.2, 'F');
+      stroke(C.white); doc.setLineWidth(0.55); doc.lines([[0.8, 0.8], [1.6, -1.8]], ML + 9.9, cy + 0.1);
+    } else if (s.st === 'todo') {
+      fill(C.white); stroke(C.gray2); doc.setLineWidth(0.45); doc.circle(ML + 11, cy, 2.1, 'FD');
+    } else {
+      fill(C.white); stroke(sc); doc.setLineWidth(0.6); doc.circle(ML + 11, cy, 2.1, 'FD');
+      fill(sc); doc.circle(ML + 11, cy, 1.05, 'F');
+    }
+    // nome
+    font(s.st === 'prog' || s.st === 'late' ? 'bold' : 'normal', 8.2); color(s.st === 'todo' ? C.gray : C.ink);
+    doc.text(fit(nice(s.t.name), nameW), ML + 16, cy + 1.2);
+    // estado
+    if (s.st === 'done') {
+      font('normal', 7.6); color(C.green); doc.text('Concluída', stateX, cy + 1.2);
+      font('normal', 7); color(C.gray2); doc.text(brShort(s.e), ML + colL - 8, cy + 1.2, { align: 'right' });
+    } else if (s.st === 'todo') {
+      font('normal', 7.6); color(C.gray); doc.text('Início previsto em ' + brShort(s.s), stateX, cy + 1.2);
+      font('normal', 7); color(C.gray2); doc.text(brShort(s.s) + ' a ' + brShort(s.e), ML + colL - 8, cy + 1.2, { align: 'right' });
+    } else {
+      const mw = 22;
+      fill(C.line); doc.roundedRect(stateX, cy - 1.1, mw, 2.2, 1.1, 1.1, 'F');
+      if (s.re > 0) { fill(sc); doc.roundedRect(stateX, cy - 1.1, Math.max(2.2, mw * s.re / 100), 2.2, 1.1, 1.1, 'F'); }
+      font('bold', 7.6); color(sc); doc.text(Math.round(s.re) + '%', stateX + mw + 3, cy + 1.2);
+      font('normal', 7); color(s.st === 'late' ? C.red : C.gray2);
+      doc.text(s.st === 'late' ? (s.e < cutDate ? 'prazo era ' + brShort(s.e) : 'término ' + brShort(s.e)) : 'término ' + brShort(s.e), ML + colL - 8, cy + 1.2, { align: 'right' });
+    }
+  });
+  if (shown.length < steps.length) {
+    font('italic', 7); color(C.gray2);
+    doc.text('Mostrando ' + shown.length + ' de ' + steps.length + ' etapas. Lista completa no relatório detalhado.', ML + 16, listTop + shown.length * rowH + rowH / 2 + 1);
+  }
+
+  // ── Coluna da direita ──
+  const rx = ML + colL + 5, rw = CW - colL - 5;
+  const box = (by0, h, title) => {
+    fill(C.white); stroke(C.line); doc.setLineWidth(0.25); doc.rect(rx, by0, rw, h, 'FD');
+    font('bold', 10); color(C.ink); doc.text(title, rx + 7, by0 + 10);
+  };
+  const obs = (rel.observations || '').trim();
+  const RL = 5.6, CAP = obs.length > 180 ? 3 : 4;
+  const rowsOf = list => Math.max(1, Math.min(list.length, CAP));
+  const bullets = (list, y0, emptyTxt, dotC, metaFn) => {
+    let yy = y0;
+    if (!list.length) { font('normal', 8); color(C.gray2); doc.text(emptyTxt, rx + 7, yy); return; }
+    const show = list.length > CAP ? CAP - 1 : list.length;
+    list.slice(0, show).forEach(s => {
+      fill(dotC(s)); doc.circle(rx + 8.2, yy - 1.1, 0.9, 'F');
+      font('normal', 8); color(C.ink); doc.text(fit(nice(s.t.name), rw - 36), rx + 12, yy);
+      font('normal', 7.2); color(C.gray); doc.text(metaFn(s), rx + rw - 7, yy, { align: 'right' });
+      yy += RL;
+    });
+    if (list.length > CAP) { font('italic', 7); color(C.gray2); doc.text('e mais ' + (list.length - show) + ' etapa(s)', rx + 12, yy); }
+  };
+  const sub = (y0, label, right) => {
+    font('bold', 7); color(C.gray); doc.text(label, rx + 7, y0, { charSpace: 0.25 });
+    if (right) { font('normal', 7); color(C.gray2); doc.text(right, rx + rw - 7, y0, { align: 'right' }); }
+  };
+
+  const hWeek = 15 + 6 + rowsOf(doneWeek) * RL + 5 + 6 + rowsOf(nextWeek) * RL + 2;
+  let yy = y;
+  box(yy, hWeek, 'Nesta semana');
+  let sy = yy + 17;
+  sub(sy, 'O QUE FOI FEITO', brShort(weekStart) + ' a ' + brShort(cutDate)); sy += 6;
+  bullets(doneWeek, sy, 'Sem atividades registradas no período.', s => s.re >= 100 ? C.green : C.navy2, s => s.re >= 100 ? 'concluída' : Math.round(s.re) + '% concluída');
+  sy += rowsOf(doneWeek) * RL + 3;
+  stroke(C.line); doc.setLineWidth(0.2); doc.line(rx + 7, sy - 2, rx + rw - 7, sy - 2);
+  sy += 4;
+  sub(sy, 'PRÓXIMA SEMANA', brShort(nextA) + ' a ' + brShort(nextB)); sy += 6;
+  bullets(nextWeek, sy, 'Nenhuma etapa programada.', s => s.e < nextA ? C.red : C.navy2, s => s.e < nextA ? 'atrasada' : (s.s > cutDate ? 'início ' + brShort(s.s) : 'continua'));
+  yy += hWeek + 4;
+  const hObs = bottom - yy;
+  if (hObs > 22) {
+    box(yy, hObs, 'Observações');
+    font('normal', 8); color(obs ? C.ink : C.gray2);
+    let lines = obs ? doc.splitTextToSize(obs, rw - 14) : ['Sem ocorrências no período.'];
+    const maxL = Math.floor((hObs - 21) / 4.23) + 1;
+    if (lines.length > maxL) { lines = lines.slice(0, maxL); lines[maxL - 1] = fit(lines[maxL - 1], rw - 20) + ' (...)'; }
+    doc.text(lines, rx + 7, yy + 18, { lineHeightFactor: 1.5 });
+  }
+
+  // ── Rodapé ──
+  font('normal', 7); color(C.gray2);
+  const resp = state.supervisorName ? 'Responsável técnico: ' + state.supervisorName + '   |   ' : '';
+  doc.text(resp + 'Hagana Tecnologia  |  Oreon Soluções', ML, PH - 6);
+  doc.text('Emitido em ' + brLong(new Date()), PW - MR, PH - 6, { align: 'right' });
+
+  doc.setProperties({ title: 'Relatório semanal nº ' + reportNo + ' - ' + (state.projectName || ''), author: state.supervisorName || 'Hagana Tecnologia', creator: 'Oreon Cronograma' });
+  const safe = (state.projectName || 'Obra').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  doc.save(`Relatorio_${reportNo}_${safe}_${(rel.weekStart || '').replace(/-/g, '')}.pdf`);
+  toast('📄 Relatório do cliente exportado!');
 }
 
 // ── Boot ──

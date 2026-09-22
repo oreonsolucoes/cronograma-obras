@@ -1,15 +1,13 @@
 // ════════════════════════════════════════════════════════
-//  Configuração do Firebase
-//  Firebase Console > Configurações do projeto (engrenagem) > Geral >
-//  "Seus apps" > app da Web > "Configuração do SDK" > opção "Config".
-//  Cole os valores abaixo. Enquanto apiKey estiver vazio, o sistema
-//  funciona em MODO LOCAL (sem login, dados só neste navegador).
+//  Configuração do Firebase (projeto cronograma-de-obras-oreon)
+//  Estas chaves identificam o projeto e podem ficar públicas;
+//  quem protege os dados são as regras do Firestore (firestore.rules).
 // ════════════════════════════════════════════════════════
 window.FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyBZYg8ti7FV62Jnz52_7QJF7dIL2nVDahc",
+  authDomain: "cronograma-de-obras-oreon.firebaseapp.com",
+  projectId: "cronograma-de-obras-oreon",
+  storageBucket: "cronograma-de-obras-oreon.firebasestorage.app",
+  messagingSenderId: "779617181059",
+  appId: "1:779617181059:web:5fb18f20a7e3cdbf34eab6"
 };
