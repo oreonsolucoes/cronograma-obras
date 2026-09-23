@@ -143,21 +143,6 @@
       </div>
     </div>
 
-    <!-- Quem está preenchendo -->
-    <div class="section">
-      <div class="section-title">Quem está preenchendo?</div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div class="field">
-          <label>Seu nome *</label>
-          <input type="text" id="f-nome" placeholder="Nome completo ou apelido" autocomplete="name" />
-        </div>
-        <div class="field">
-          <label>Função / Cargo</label>
-          <input type="text" id="f-funcao" placeholder="Ex: Técnico, Encarregado..." />
-        </div>
-      </div>
-    </div>
-
     <!-- Etapas -->
     <div class="section">
       <div class="section-title">Andamento das Etapas</div>
@@ -474,9 +459,6 @@
   }
 
   window.enviarRelatorio = async function() {
-    const nomeResponde = document.getElementById('f-nome').value.trim();
-    if (!nomeResponde) { document.getElementById('f-nome').focus(); toast('Informe seu nome antes de enviar.'); return; }
-
     const btn = document.getElementById('btn-enviar');
     btn.disabled = true;
 
@@ -490,7 +472,7 @@
         btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Enviando...';
       }
 
-      const urlsPorEtapa = await uploadFotosParaDrive(nomeResponde);
+      const urlsPorEtapa = await uploadFotosParaDrive('equipe');
 
       // 2. Montar dados das etapas (sem base64 — só URLs do Drive)
       btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Salvando relatório...';
@@ -510,12 +492,12 @@
 
       const agora = new Date().toISOString();
 
+      const obsGeral = document.getElementById('obs-geral').value.trim();
+
       // 3. Gravar no documento do link (envios acumulados)
       await db.collection('links').doc(token).update({
         envios: firebase.firestore.FieldValue.arrayUnion({
-          nomeResponde,
-          funcao:    document.getElementById('f-funcao').value.trim(),
-          obsGeral:  document.getElementById('obs-geral').value.trim(),
+          obsGeral,
           etapas,
           enviadoEm: agora,
           semana:    linkData.semana,
@@ -531,9 +513,7 @@
         semanaUltimoEnvio: linkData.semana,
         [`enviosSemana.${linkData.semana}`]: firebase.firestore.FieldValue.arrayUnion({
           token,
-          nomeResponde,
-          funcao:    document.getElementById('f-funcao').value.trim(),
-          obsGeral:  document.getElementById('obs-geral').value.trim(),
+          obsGeral,
           etapas:    etapas.map(e => ({
             id: e.id, nome: e.nome,
             pctNovo: e.pctNovo, obs: e.obs,
@@ -546,9 +526,9 @@
       document.getElementById('tela-form').style.display = 'none';
       document.getElementById('tela-sucesso').style.display = '';
 
-      let succMsg = 'Obrigado, ' + nomeResponde + '! As informações foram registradas com sucesso para a semana de ' + semanaLabel(linkData.semana) + '.';
+      let succMsg = 'Relatório enviado com sucesso para a semana de ' + semanaLabel(linkData.semana) + '!';
       if (temFotos && urlsPorEtapa._semUrls) {
-        succMsg += ' As fotos foram enviadas ao Google Drive (o link será gerado em instantes).';
+        succMsg += ' As fotos foram enviadas ao Google Drive.';
       } else if (temFotos && !APPS_SCRIPT_URL) {
         succMsg += ' Atenção: as fotos não foram enviadas pois o Apps Script ainda não está configurado.';
       }

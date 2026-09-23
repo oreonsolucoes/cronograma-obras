@@ -301,11 +301,15 @@
   // ── Aplicar dados vindos da nuvem ──
   function applyState(data) {
     Cloud.applying = true;
-    state = Object.assign({ projectName: '', supervisorName: '', tasks: [], nextId: 1, relatorios: [], relNextId: 1 }, data, { ownerUid: Cloud.user.uid });
+    // Supervisor = displayName do usuário logado (preenchido automaticamente)
+    const autoSupervisor = Cloud.user.displayName || Cloud.user.email || '';
+    state = Object.assign({ projectName: '', supervisorName: autoSupervisor, tasks: [], nextId: 1, relatorios: [], relNextId: 1 }, data, { ownerUid: Cloud.user.uid });
+    // Sempre mantém supervisor atualizado com o nome do usuário logado
+    state.supervisorName = autoSupervisor || state.supervisorName;
     if (!Array.isArray(state.tasks)) state.tasks = [];
     if (!Array.isArray(state.relatorios)) state.relatorios = [];
     projectNameEl.value = state.projectName;
-    const sup = document.getElementById('supervisor-name'); if (sup) sup.value = state.supervisorName || '';
+    const sup = document.getElementById('supervisor-name'); if (sup) sup.value = state.supervisorName;
     selectedId = null;
     render();
     if (typeof currentView !== 'undefined' && currentView === 'relatorio') renderRelatorios();
