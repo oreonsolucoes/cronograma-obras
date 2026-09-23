@@ -37,25 +37,21 @@ function cascadeRecalc() {
         }
       });
       if (!latestEnd) return;
-      // Only move if predecessor end > current task start
-      const curStart = task.start ? new Date(task.start) : null;
-      if (!curStart || latestEnd > curStart) {
-        // New start = next work day after latestEnd
-        const newStart = new Date(latestEnd);
+      // Sempre recalcula: empurra pra frente E puxa pra trás
+      const newStart = new Date(latestEnd);
+      newStart.setDate(newStart.getDate() + 1);
+      newStart.setHours(8, 0, 0, 0);
+      // Skip weekends and holidays
+      while (isWeekend(newStart) || hs.has(dateKey(newStart))) {
         newStart.setDate(newStart.getDate() + 1);
-        newStart.setHours(8, 0, 0, 0);
-        // Skip weekends and holidays
-        while (isWeekend(newStart) || hs.has(dateKey(newStart))) {
-          newStart.setDate(newStart.getDate() + 1);
-        }
-        const newEnd = addWorkDays(newStart.toISOString(), task.duration || 1, hs);
-        const newStartISO = newStart.toISOString();
-        if (newStartISO !== task.start || newEnd !== task.end) {
-          task.start = newStartISO;
-          task.end = newEnd;
-          taskMap[task.id] = task;
-          changed = true;
-        }
+      }
+      const newEnd = addWorkDays(newStart.toISOString(), task.duration || 1, hs);
+      const newStartISO = newStart.toISOString();
+      if (newStartISO !== task.start || newEnd !== task.end) {
+        task.start = newStartISO;
+        task.end = newEnd;
+        taskMap[task.id] = task;
+        changed = true;
       }
     });
   }
