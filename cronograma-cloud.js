@@ -47,44 +47,19 @@
     syncEl.className = cls; syncEl.textContent = label; syncEl.title = tip;
   };
 
-  const toolbar = document.getElementById('toolbar');
-  if (toolbar) {
-    // ── Grupo NAVEGAÇÃO inserido no ribbon ──
-    const navGroup = document.createElement('div'); navGroup.className = 'rib-group';
-    const navBtns = document.createElement('div'); navBtns.className = 'rib-btns';
+  // Mostrar grupo NAVEGAÇÃO (já está no HTML, só oculto até autenticar)
+  const ribNav = document.getElementById('rib-nav');
+  const ribNavSep = document.getElementById('rib-nav-sep');
+  if (ribNav) ribNav.style.display = '';
+  if (ribNavSep) ribNavSep.style.display = '';
 
-    // Botão "Painel" — voltar à tela de obras
-    const bPainel = document.createElement('button');
-    bPainel.className = 'rib-btn rib-btn-sm'; bPainel.id = 'btn-painel'; bPainel.title = 'Voltar ao painel de obras';
-    bPainel.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Painel</span>';
-    bPainel.addEventListener('click', () => { window.location.href = 'painel.html'; });
-
-    // Botão "Gerar link da semana"
-    const bLink = document.createElement('button');
-    bLink.className = 'rib-btn rib-btn-sm'; bLink.id = 'btn-gerar-link'; bLink.title = 'Gerar link semanal para a equipe preencher';
-    bLink.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>Link Semana</span>';
-    bLink.addEventListener('click', () => Cloud.gerarLinkSemanal && Cloud.gerarLinkSemanal());
-
-    // Botão Ajuda / Tour
-    const bTour = document.createElement('button');
-    bTour.className = 'rib-btn rib-btn-sm'; bTour.id = 'btn-tour'; bTour.title = 'Rever o tour guiado';
-    bTour.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M6.2 6.3a1.9 1.9 0 013.6.7c0 1.3-1.8 1.6-1.8 2.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.6" r=".8" fill="currentColor"/></svg><span>Ajuda</span>';
-    bTour.addEventListener('click', () => Tour.start(true));
-
-    navBtns.appendChild(bPainel); navBtns.appendChild(bLink); navBtns.appendChild(bTour);
-    const navLabel = document.createElement('div'); navLabel.className = 'rib-label'; navLabel.textContent = 'NAVEGAÇÃO';
-    navGroup.appendChild(navBtns); navGroup.appendChild(navLabel);
-
-    // Inserir ANTES do separador flex (style="flex:1") para ficar antes do grupo SISTEMA
-    const flexSpacer = toolbar.querySelector('[style*="flex:1"]') || toolbar.querySelector('[style*="flex: 1"]');
-    const ribSep = document.createElement('div'); ribSep.className = 'rib-sep';
-    if (flexSpacer) {
-      toolbar.insertBefore(ribSep, flexSpacer);
-      toolbar.insertBefore(navGroup, flexSpacer);
-    } else {
-      toolbar.appendChild(ribSep); toolbar.appendChild(navGroup);
-    }
-  }
+  // Ligar botões do grupo NAVEGAÇÃO
+  const bPainel = document.getElementById('btn-painel');
+  if (bPainel) bPainel.addEventListener('click', () => { window.location.href = 'painel.html'; });
+  const bLink = document.getElementById('btn-gerar-link');
+  if (bLink) bLink.addEventListener('click', () => Cloud.gerarLinkSemanal && Cloud.gerarLinkSemanal());
+  const bTour = document.getElementById('btn-tour');
+  if (bTour) bTour.addEventListener('click', () => Tour.start(true));
 
   // ════════════════════════════════════════════════
   //  MODO LOCAL (sem Firebase configurado)
@@ -496,7 +471,15 @@
   }
 
   auth.onAuthStateChanged(user => {
-    if (user) { if (!Cloud.signingUp) onSignedIn(user); }
+    if (user) {
+      // Se não veio do painel (sem ?obra= na URL), redireciona para o painel
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has('obra') && !Cloud.signingUp) {
+        window.location.href = 'painel.html';
+        return;
+      }
+      if (!Cloud.signingUp) onSignedIn(user);
+    }
     else { Cloud.user = null; openAuth('login'); }
   });
 
