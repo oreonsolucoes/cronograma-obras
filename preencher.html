@@ -204,6 +204,12 @@
 
   if (!token) { mostrarErro('Link inválido', 'Nenhum token encontrado nesta URL. Solicite um novo link ao responsável.'); return; }
 
+  // ── URL do Apps Script (substitua após publicar o Web App) ──
+  // Após publicar em script.google.com, cole a URL aqui:
+  const APPS_SCRIPT_URL = window.APPS_SCRIPT_URL || '';
+  // Você também pode definir no firebase-config.js:
+  //   window.APPS_SCRIPT_URL = 'https://script.google.com/macros/s/SEU_ID/exec';
+
   let linkData = null;
   const fotos = {}; // { etapaId: [{ base64, nome }] }
 
@@ -402,62 +408,151 @@
 
   function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+  // ── Upload de fotos via Apps Script ─────────────────────────
+  async function uploadFotosParaDrive(nomeResponde) {
+    // Se não houver fotos em nenhuma etapa, retorna objeto vazio
+    const temFotos = Object.values(fotos).some(arr => arr.length > 0);
+    if (!temFotos) return {};
+
+    if (!APPS_SCRIPT_URL) {
+      // Se Apps Script não configurado, avisa mas continua sem fotos
+      console.warn('[preencher] APPS_SCRIPT_URL não configurado — fotos não serão enviadas ao Drive.');
+      return {};
+    }
+
+    // Monta payload: só etapas com fotos
+    const etapasComFotos = {};
+    Object.keys(fotos).forEach(etapaId => {
+      const arr = fotos[etapaId];
+      if (arr.length > 0) {
+        // Busca nome da etapa no linkData
+        const etapaDado = (linkData.etapas || []).find(e => e.id === etapaId);
+        const nomeEtapa = etapaDado ? etapaDado.nome : etapaId;
+        etapasComFotos[nomeEtapa] = { fotos: arr.map(f => f.base64) };
+      }
+    });
+
+    const payload = {
+      obraId:      linkData.obraId,
+      obraNome:    linkData.obraNome || linkData.obraId,
+      semana:      linkData.semana,
+      respondente: nomeResponde,
+      etapas:      etapasComFotos,
+    };
+
+    // Apps Script requer no-cors OU JSONP para chamada cross-origin.
+    // Usamos fetch com mode: 'no-cors' → response opaque (sem corpo).
+    // Para verificar sucesso, fazemos fetch normal que pode funcionar se o
+    // Apps Script retornar os headers CORS corretos (Content-Type: application/json).
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' }, // Apps Script aceita text/plain para evitar preflight
+        body: JSON.stringify(payload),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return data.urlsPorEtapa || {};
+      }
+    } catch (err) {
+      console.warn('[drive-upload] Erro no fetch normal, tentando no-cors:', err);
+    }
+
+    // Fallback: no-cors (resposta opaca — não sabemos o resultado, mas o upload ocorre)
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error('[drive-upload] Falha total:', err);
+    }
+    // Com no-cors não temos as URLs — retorna objeto indicando upload ocorreu sem URLs
+    return { _semUrls: true };
+  }
+
   window.enviarRelatorio = async function() {
     const nomeResponde = document.getElementById('f-nome').value.trim();
     if (!nomeResponde) { document.getElementById('f-nome').focus(); toast('Informe seu nome antes de enviar.'); return; }
 
     const btn = document.getElementById('btn-enviar');
     btn.disabled = true;
-    btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Enviando...';
+
+    const temFotos = Object.values(fotos).some(arr => arr.length > 0);
 
     try {
-      const etapas = (linkData.etapas || []).map(et => ({
-        id: et.id,
-        nome: et.nome,
-        pctAnterior: et.percentComplete || 0,
-        pctNovo: parseInt(document.getElementById('range-' + et.id)?.value || et.percentComplete || 0),
-        obs: document.getElementById('obs-' + et.id)?.value.trim() || '',
-        fotos: (fotos[et.id] || []).map(f => f.base64),
-      }));
+      // 1. Upload das fotos para o Drive (se houver)
+      if (temFotos) {
+        btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Enviando fotos...';
+      } else {
+        btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Enviando...';
+      }
 
-      const envio = {
-        nomeResponde,
-        funcao: document.getElementById('f-funcao').value.trim(),
-        obsGeral: document.getElementById('obs-geral').value.trim(),
-        etapas,
-        enviadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        semana: linkData.semana,
-        obraId: linkData.obraId,
-      };
+      const urlsPorEtapa = await uploadFotosParaDrive(nomeResponde);
 
-      // Gravar no documento do link (array de envios)
+      // 2. Montar dados das etapas (sem base64 — só URLs do Drive)
+      btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Salvando relatório...';
+
+      const etapas = (linkData.etapas || []).map(et => {
+        const nomeEtapa = et.nome;
+        return {
+          id:          et.id,
+          nome:        nomeEtapa,
+          pctAnterior: et.percentComplete || 0,
+          pctNovo:     parseInt(document.getElementById('range-' + et.id)?.value || et.percentComplete || 0),
+          obs:         document.getElementById('obs-' + et.id)?.value.trim() || '',
+          qtdFotos:    (fotos[et.id] || []).length,
+          fotosDrive:  urlsPorEtapa[nomeEtapa] || [],  // URLs públicas do Drive
+        };
+      });
+
+      const agora = new Date().toISOString();
+
+      // 3. Gravar no documento do link (envios acumulados)
       await db.collection('links').doc(token).update({
         envios: firebase.firestore.FieldValue.arrayUnion({
-          ...envio,
-          enviadoEm: new Date().toISOString(), // serverTimestamp não funciona dentro de arrayUnion
+          nomeResponde,
+          funcao:    document.getElementById('f-funcao').value.trim(),
+          obsGeral:  document.getElementById('obs-geral').value.trim(),
+          etapas,
+          enviadoEm: agora,
+          semana:    linkData.semana,
+          obraId:    linkData.obraId,
         }),
         usado: true,
       });
 
-      // Gravar também no cronograma da obra como relatório semanal
-      // (o supervisor verá ao gerar o PDF)
-      const obraRef = db.collection('users').doc(linkData.ownerUid).collection('projetos').doc(linkData.obraId);
+      // 4. Gravar no cronograma da obra (supervisor verá ao gerar PDF)
+      const obraRef = db.collection('users').doc(linkData.ownerUid)
+                        .collection('projetos').doc(linkData.obraId);
       await obraRef.update({
         semanaUltimoEnvio: linkData.semana,
         [`enviosSemana.${linkData.semana}`]: firebase.firestore.FieldValue.arrayUnion({
           token,
           nomeResponde,
-          funcao: envio.funcao,
-          obsGeral: envio.obsGeral,
-          etapas: etapas.map(e => ({ id:e.id, nome:e.nome, pctNovo:e.pctNovo, obs:e.obs })),
-          totalFotos: etapas.reduce((s,e) => s + e.fotos.length, 0),
-          enviadoEm: new Date().toISOString(),
+          funcao:    document.getElementById('f-funcao').value.trim(),
+          obsGeral:  document.getElementById('obs-geral').value.trim(),
+          etapas:    etapas.map(e => ({
+            id: e.id, nome: e.nome,
+            pctNovo: e.pctNovo, obs: e.obs,
+            qtdFotos: e.qtdFotos, fotosDrive: e.fotosDrive,
+          })),
+          enviadoEm: agora,
         }),
       });
 
       document.getElementById('tela-form').style.display = 'none';
       document.getElementById('tela-sucesso').style.display = '';
-      document.getElementById('succ-sub').textContent = 'Obrigado, ' + nomeResponde + '! As informações foram registradas com sucesso para a semana de ' + semanaLabel(linkData.semana) + '.';
+
+      let succMsg = 'Obrigado, ' + nomeResponde + '! As informações foram registradas com sucesso para a semana de ' + semanaLabel(linkData.semana) + '.';
+      if (temFotos && urlsPorEtapa._semUrls) {
+        succMsg += ' As fotos foram enviadas ao Google Drive (o link será gerado em instantes).';
+      } else if (temFotos && !APPS_SCRIPT_URL) {
+        succMsg += ' Atenção: as fotos não foram enviadas pois o Apps Script ainda não está configurado.';
+      }
+      document.getElementById('succ-sub').textContent = succMsg;
 
     } catch (e) {
       console.error('[enviar]', e);

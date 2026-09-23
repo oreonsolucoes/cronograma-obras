@@ -685,13 +685,24 @@ function importJSON(file) {
   r.readAsText(file);
 }
 
-// ── Splitter ──
+// ── Splitter (mouse + touch) ──
 (function() {
   const sp = $('#splitter'), tp = $('#table-panel');
   let drag = false, sx = 0, sw = 0;
-  sp.addEventListener('mousedown', e => { drag=true; sx=e.clientX; sw=tp.offsetWidth; sp.classList.add('dragging'); document.body.style.userSelect='none'; document.body.style.cursor='col-resize'; });
-  document.addEventListener('mousemove', e => { if (!drag) return; tp.style.width = Math.max(240, Math.min(sw+e.clientX-sx, window.innerWidth*.72))+'px'; renderGantt(); });
-  document.addEventListener('mouseup', () => { if (!drag) return; drag=false; sp.classList.remove('dragging'); document.body.style.userSelect=''; document.body.style.cursor=''; });
+
+  function startDrag(clientX) { drag=true; sx=clientX; sw=tp.offsetWidth; sp.classList.add('dragging'); document.body.style.userSelect='none'; document.body.style.cursor='col-resize'; }
+  function moveDrag(clientX)  { if (!drag) return; tp.style.width = Math.max(200, Math.min(sw+clientX-sx, window.innerWidth*.80))+'px'; renderGantt(); }
+  function endDrag()          { if (!drag) return; drag=false; sp.classList.remove('dragging'); document.body.style.userSelect=''; document.body.style.cursor=''; }
+
+  // Mouse
+  sp.addEventListener('mousedown', e => startDrag(e.clientX));
+  document.addEventListener('mousemove', e => moveDrag(e.clientX));
+  document.addEventListener('mouseup', endDrag);
+
+  // Touch
+  sp.addEventListener('touchstart', e => { e.preventDefault(); startDrag(e.touches[0].clientX); }, { passive: false });
+  document.addEventListener('touchmove', e => { if (drag) { e.preventDefault(); moveDrag(e.touches[0].clientX); } }, { passive: false });
+  document.addEventListener('touchend', endDrag);
 })();
 
 // ── Zoom ──

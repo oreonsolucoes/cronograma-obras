@@ -211,8 +211,14 @@
 
   /* ── Splitter ── */
   #splitter {
-    width: 4px; cursor: col-resize; background: var(--border-2);
+    width: 6px; cursor: col-resize; background: var(--border-2);
     flex-shrink: 0; transition: background .15s;
+    /* área de toque maior via pseudo-elemento invisível */
+    position: relative;
+  }
+  #splitter::after {
+    content: ''; position: absolute; top: 0; left: -8px; right: -8px; bottom: 0;
+    /* expande área clicável/tocável para 22px sem mudar visual */
   }
   #splitter:hover, #splitter.dragging { background: var(--accent); }
 
