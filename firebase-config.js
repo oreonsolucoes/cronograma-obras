@@ -11,3 +11,6 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "779617181059",
   appId: "1:779617181059:web:5fb18f20a7e3cdbf34eab6"
 };
+
+// ── Google Apps Script — Upload de fotos para o Drive ──
+window.APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynEIgabg4rWwpT1S7k3I0ITm3QOr9wSJ4A67-PU_iNUYFh_2rdnw76brtZEzz1_X_0/exec';
