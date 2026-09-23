@@ -705,6 +705,65 @@ function importJSON(file) {
   document.addEventListener('touchend', endDrag);
 })();
 
+// ── Column Resize ──
+(function() {
+  // Indices das colunas redimensionáveis (skip 0=#, skip last=Ações)
+  const RESIZABLE_COLS = [1, 2, 3, 4, 5]; // Nome, Dur, Início, Fim, Antec
+  let colDrag = false, colTh = null, colSx = 0, colSw = 0;
+
+  function injectResizers() {
+    const ths = document.querySelectorAll('#task-table thead th');
+    ths.forEach((th, i) => {
+      if (!RESIZABLE_COLS.includes(i)) return;
+      if (th.querySelector('.col-resizer')) return; // já injetado
+      const div = document.createElement('div');
+      div.className = 'col-resizer';
+      th.appendChild(div);
+    });
+  }
+
+  function startColDrag(th, clientX) {
+    colDrag = true; colTh = th; colSx = clientX; colSw = th.offsetWidth;
+    document.body.style.userSelect = 'none'; document.body.style.cursor = 'col-resize';
+    th.querySelector('.col-resizer').classList.add('dragging');
+  }
+  function moveColDrag(clientX) {
+    if (!colDrag || !colTh) return;
+    const w = Math.max(40, colSw + clientX - colSx);
+    colTh.style.width = w + 'px'; colTh.style.minWidth = w + 'px';
+  }
+  function endColDrag() {
+    if (!colDrag) return; colDrag = false;
+    if (colTh) { const r = colTh.querySelector('.col-resizer'); if (r) r.classList.remove('dragging'); }
+    colTh = null; document.body.style.userSelect = ''; document.body.style.cursor = '';
+  }
+
+  document.addEventListener('mousemove', e => moveColDrag(e.clientX));
+  document.addEventListener('mouseup', endColDrag);
+  document.addEventListener('touchmove', e => { if (colDrag) { e.preventDefault(); moveColDrag(e.touches[0].clientX); } }, { passive: false });
+  document.addEventListener('touchend', endColDrag);
+
+  // Delegação de eventos no thead
+  document.addEventListener('mousedown', e => {
+    const resizer = e.target.closest('.col-resizer');
+    if (!resizer) return;
+    e.preventDefault();
+    startColDrag(resizer.parentElement, e.clientX);
+  });
+  document.addEventListener('touchstart', e => {
+    const resizer = e.target.closest('.col-resizer');
+    if (!resizer) return;
+    e.preventDefault();
+    startColDrag(resizer.parentElement, e.touches[0].clientX);
+  }, { passive: false });
+
+  // Injetar após cada render
+  const origRender = window.render;
+  window.render = function() { origRender && origRender.apply(this, arguments); injectResizers(); };
+  // Injetar agora se a tabela já existe
+  injectResizers();
+})();
+
 // ── Zoom ──
 $('#zoom-in').addEventListener('click', () => { DAY_W = Math.min(80, DAY_W+6); renderGantt(); });
 $('#zoom-out').addEventListener('click', () => { DAY_W = Math.max(12, DAY_W-6); renderGantt(); });
