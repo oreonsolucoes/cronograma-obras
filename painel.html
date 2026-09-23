@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oreon — Painel de Obras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --surface2: #f8fafc;
+      --border: #e2e8f0;
+      --border2: #cbd5e1;
+      --text: #0f172a;
+      --text2: #475569;
+      --text3: #94a3b8;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --accent-hover: #1d4ed8;
+      --green: #16a34a;
+      --green-soft: #f0fdf4;
+      --yellow: #d97706;
+      --yellow-soft: #fffbeb;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+      --radius: 10px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --surface2: #162032;
+        --border: #334155;
+        --border2: #475569;
+        --text: #f1f5f9;
+        --text2: #94a3b8;
+        --text3: #64748b;
+        --accent-soft: #1e3a5f;
+        --green-soft: #052e16;
+        --yellow-soft: #431407;
+        --red-soft: #450a0a;
+        --shadow: 0 1px 3px rgba(0,0,0,.3);
+        --shadow-md: 0 4px 12px rgba(0,0,0,.4);
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0f172a; --surface: #1e293b; --surface2: #162032;
+      --border: #334155; --border2: #475569; --text: #f1f5f9;
+      --text2: #94a3b8; --text3: #64748b; --accent-soft: #1e3a5f;
+      --green-soft: #052e16; --yellow-soft: #431407; --red-soft: #450a0a;
+      --shadow: 0 1px 3px rgba(0,0,0,.3); --shadow-md: 0 4px 12px rgba(0,0,0,.4);
+    }
+
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── AUTH ── */
+    #auth-overlay {
+      position: fixed; inset: 0; z-index: 9999; display: flex;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    }
+    .auth-brand {
+      width: 380px; flex-shrink: 0; padding: 48px 40px;
+      display: flex; flex-direction: column; gap: 0; border-right: 1px solid rgba(255,255,255,.1);
+    }
+    @media (max-width: 700px) { .auth-brand { display: none; } }
+    .auth-logo { font-size: 20px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .auth-logo-mark { width: 28px; height: 28px; background: #2563eb; border-radius: 7px; display: inline-block; }
+    .auth-brand-mid { margin-top: auto; margin-bottom: auto; }
+    .auth-brand-mid h1 { font-size: 22px; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 20px; }
+    .auth-brand-mid ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .auth-brand-mid li { font-size: 13px; color: #94a3b8; padding-left: 18px; position: relative; }
+    .auth-brand-mid li::before { content: '✓'; position: absolute; left: 0; color: #2563eb; font-weight: 700; }
+    .auth-brand-foot { font-size: 11px; color: #475569; margin-top: auto; }
+    .auth-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .auth-card { background: #fff; border-radius: 14px; padding: 36px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    .auth-loading { text-align: center; padding: 20px; }
+    .auth-spin { width: 28px; height: 28px; border: 3px solid #e2e8f0; border-top-color: #2563eb; border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .auth-form h2 { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .auth-sub { font-size: 12.5px; color: #64748b; margin-bottom: 18px; }
+    .af { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+    .af input { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px; font-size: 13px; font-family: inherit; outline: none; transition: border .15s; }
+    .af input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .pw { position: relative; }
+    .pw input { width: 100%; padding-right: 64px; }
+    .pw-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 11px; color: #64748b; cursor: pointer; padding: 4px; }
+    .auth-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .chk { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #374151; cursor: pointer; }
+    .auth-link { background: none; border: none; color: #2563eb; font-size: 12px; cursor: pointer; text-decoration: underline; font-family: inherit; padding: 0; }
+    .auth-msg { font-size: 12px; min-height: 18px; margin-bottom: 8px; }
+    .auth-msg.err { color: #dc2626; }
+    .auth-msg.ok { color: #16a34a; }
+    .auth-btn { width: 100%; background: #2563eb; color: #fff; border: none; border-radius: 7px; padding: 10px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s; }
+    .auth-btn:hover { background: #1d4ed8; }
+    .auth-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .auth-switch { font-size: 12px; color: #64748b; text-align: center; margin-top: 14px; }
+    .auth-note { font-size: 11px; color: #92400e; background: #fef3c7; border-radius: 6px; padding: 8px 10px; margin-top: 14px; }
+    .closing { animation: fadeOut .25s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
+
+    /* ── HEADER ── */
+    header {
+      background: #1e293b; color: #f1f5f9;
+      padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 16px;
+      position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 0 rgba(0,0,0,.2);
+    }
+    .hlogo { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .hlogo-mark { width: 22px; height: 22px; background: #2563eb; border-radius: 5px; }
+    .hflex { flex: 1; }
+    .hactions { display: flex; align-items: center; gap: 8px; }
+    .btn-hdr { background: rgba(255,255,255,.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer; transition: background .15s; display: flex; align-items: center; gap: 6px; }
+    .btn-hdr:hover { background: rgba(255,255,255,.14); }
+    .btn-hdr.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .btn-hdr.primary:hover { background: #1d4ed8; }
+    #user-menu { position: relative; }
+    #user-btn { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 4px 10px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: #e2e8f0; font-family: inherit; font-size: 12px; }
+    .ua { width: 22px; height: 22px; background: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    #user-drop { position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); min-width: 180px; overflow: hidden; z-index: 200; }
+    .ud-head { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .ud-name { display: block; font-size: 13px; font-weight: 600; color: var(--text); }
+    .ud-mail { font-size: 11px; color: var(--text3); }
+    #user-drop button { display: block; width: 100%; text-align: left; padding: 9px 12px; background: none; border: none; font-size: 12.5px; color: var(--text2); cursor: pointer; font-family: inherit; transition: background .1s; }
+    #user-drop button:hover { background: var(--surface2); }
+    .ud-danger { color: var(--red) !important; }
+
+    /* ── CONTEÚDO ── */
+    #content { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    .page-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: var(--text3); margin-bottom: 24px; }
+
+    /* ── FILTROS ── */
+    .filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .filter-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; color: var(--text2); cursor: pointer; font-family: inherit; transition: all .15s; }
+    .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+    .filter-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    .filter-search { flex: 1; min-width: 160px; max-width: 280px; }
+    .filter-search input { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12.5px; background: var(--surface); color: var(--text); font-family: inherit; outline: none; }
+    .filter-search input:focus { border-color: var(--accent); }
+
+    /* ── GRID DE CARDS ── */
+    .obras-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+
+    .card-nova {
+      border: 2px dashed var(--border2); border-radius: var(--radius);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 36px 20px; gap: 10px; cursor: pointer; transition: all .18s;
+      color: var(--text3); min-height: 180px;
+    }
+    .card-nova:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .card-nova svg { width: 28px; height: 28px; }
+    .card-nova span { font-size: 13px; font-weight: 600; }
+
+    .obra-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px; display: flex; flex-direction: column; gap: 12px;
+      box-shadow: var(--shadow); transition: box-shadow .18s, border-color .18s; cursor: pointer;
+      position: relative; min-height: 180px;
+    }
+    .obra-card:hover { box-shadow: var(--shadow-md); border-color: var(--border2); }
+    .obra-card.arquivada { opacity: .55; }
+
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card-status { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 4px; }
+    .status-prazo { background: var(--green-soft); color: var(--green); }
+    .status-atrasada { background: var(--red-soft); color: var(--red); }
+    .status-concluida { background: var(--accent-soft); color: var(--accent); }
+    .status-arquivada { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+
+    .card-menu-btn { background: none; border: none; color: var(--text3); cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 16px; line-height: 1; transition: background .1s; flex-shrink: 0; }
+    .card-menu-btn:hover { background: var(--surface2); color: var(--text); }
+
+    .card-nome { font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .card-cliente { font-size: 12px; color: var(--text3); margin-top: 1px; }
+
+    .card-pct-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .pct-row { display: flex; justify-content: space-between; align-items: center; }
+    .pct-label { font-size: 11px; color: var(--text3); }
+    .pct-val { font-size: 12px; font-weight: 700; color: var(--text); }
+    .pct-bar { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .pct-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width .4s; }
+    .pct-fill.done { background: var(--green); }
+    .pct-fill.atrasada { background: var(--red); }
+
+    .card-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .meta-item { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+    .meta-item svg { flex-shrink: 0; opacity: .7; }
+
+    .card-bottom { display: flex; gap: 8px; margin-top: auto; }
+    .card-link-badge {
+      flex: 1; background: var(--yellow-soft); color: var(--yellow); border: 1px solid rgba(217,119,6,.2);
+      border-radius: 6px; padding: 5px 8px; font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .card-link-badge.sem-envio { background: var(--red-soft); color: var(--red); border-color: rgba(220,38,38,.15); }
+    .card-link-badge.ok { background: var(--green-soft); color: var(--green); border-color: rgba(22,163,74,.15); }
+
+    /* ── DROPDOWN DE AÇÃO DO CARD ── */
+    .card-drop {
+      position: absolute; top: 44px; right: 12px; z-index: 50;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: var(--shadow-md); min-width: 170px; overflow: hidden;
+    }
+    .card-drop button { display: block; width: 100%; text-align: left; padding: 9px 12px; background: none; border: none; font-size: 12.5px; color: var(--text2); cursor: pointer; font-family: inherit; transition: background .1s; }
+    .card-drop button:hover { background: var(--surface2); color: var(--text); }
+    .card-drop .sep { height: 1px; background: var(--border); }
+    .card-drop .danger { color: var(--red); }
+
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); grid-column: 1/-1; }
+    .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── MODAL NOVA OBRA ── */
+    #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
+    #modal-overlay.open { display: flex; }
+    #modal { background: var(--surface); border-radius: 12px; padding: 24px; width: 100%; max-width: 440px; box-shadow: var(--shadow-md); }
+    #modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .mfield { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .mfield label { font-size: 11.5px; font-weight: 600; color: var(--text2); }
+    .mfield input, .mfield select { border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border .15s; }
+    .mfield input:focus, .mfield select:focus { border-color: var(--accent); }
+    .mfooter { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    .mbtn { padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: background .15s; }
+    .mbtn.cancel { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+    .mbtn.cancel:hover { background: var(--border); }
+    .mbtn.ok { background: var(--accent); color: #fff; }
+    .mbtn.ok:hover { background: var(--accent-hover); }
+
+    /* ── TOAST ── */
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #f1f5f9; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 9999; pointer-events: none; opacity: 0; transition: opacity .3s; white-space: nowrap; max-width: 90vw; }
+    #toast.show { opacity: 1; }
+
+    /* ── LOADING ── */
+    #loading { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 500; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+    #loading.show { display: flex; }
+    .load-spin { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    .load-msg { font-size: 13px; color: var(--text3); }
+
+    /* ── SYNC STATUS ── */
+    #sync-status { font-size: 11px; margin-left: 8px; padding: 3px 8px; border-radius: 4px; }
+    .sync-ok { color: var(--green); }
+    .sync-busy { color: var(--yellow); }
+    .sync-warn, .sync-err { color: var(--red); }
+    .sync-local { color: var(--text3); }
+
+    /* ── SEMANA BADGE aviso ── */
+    .alerta-semana { display: flex; align-items: center; gap: 6px; background: var(--yellow-soft); border: 1px solid rgba(217,119,6,.25); color: var(--yellow); border-radius: 7px; padding: 7px 12px; font-size: 11.5px; font-weight: 600; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div id="loading" class="show">
+  <div class="load-spin"></div>
+  <div class="load-msg">Carregando...</div>
+</div>
+
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay" style="display:none">
+  <aside class="auth-brand">
+    <div><div class="auth-logo"><span class="auth-logo-mark"></span>Oreon Cronograma</div></div>
+    <div class="auth-brand-mid">
+      <h1>Gerencie todas as suas obras em um só lugar.</h1>
+      <ul>
+        <li>Cronograma com Gantt e dependências</li>
+        <li>Relatório semanal em PDF para o cliente</li>
+        <li>Link para a equipe preencher o andamento</li>
+        <li>Dados na nuvem, acessíveis de qualquer lugar</li>
+      </ul>
+    </div>
+    <div class="auth-brand-foot">Hagana Tecnologia &nbsp;|&nbsp; Oreon Soluções</div>
+  </aside>
+  <main class="auth-main">
+    <div class="auth-card">
+      <div class="auth-loading" id="auth-loading"><div class="auth-spin"></div><p id="auth-loading-msg">Verificando sessão...</p></div>
+      <form id="form-login" class="auth-form" hidden novalidate>
+        <h2>Entrar</h2>
+        <p class="auth-sub">Acesse sua conta para ver seus cronogramas.</p>
+        <label class="af">E-mail<input type="email" name="email" autocomplete="email" required></label>
+        <label class="af">Senha
+          <span class="pw"><input type="password" name="senha" autocomplete="current-password" required><button type="button" class="pw-eye" tabindex="-1">Mostrar</button></span>
+        </label>
+        <div class="auth-row">
+          <label class="chk"><input type="checkbox" name="lembrar" checked> Manter conectado</label>
+          <button type="button" class="auth-link" data-go="reset">Esqueci minha senha</button>
+        </div>
+        <div class="auth-msg" role="alert"></div>
+        <button type="submit" class="auth-btn">Entrar</button>
+        <p class="auth-switch">Ainda não tem conta? <button type="button" class="auth-link" data-go="signup">Criar conta</button></p>
+      </form>
+      <form id="form-signup" class="auth-form" hidden novalidate>
+        <h2>Criar conta</h2>
+        <p class="auth-sub">Leva menos de um minuto.</p>
+        <label class="af">Nome<input type="text" name="nome" autocomplete="name" required></label>
+        <label class="af">E-mail<input type="email" name="email" autocomplete="email" required></label>
+        <label class="af">Senha<span class="pw"><input type="password" name="senha" autocomplete="new-password" minlength="6" required><button type="button" class="pw-eye" tabindex="-1">Mostrar</button></span><small>Mínimo 6 caracteres.</small></label>
+        <label class="af">Confirmar senha<input type="password" name="senha2" autocomplete="new-password" required></label>
+        <div class="auth-msg" role="alert"></div>
+        <button type="submit" class="auth-btn">Criar conta</button>
+        <p class="auth-switch">Já tem conta? <button type="button" class="auth-link" data-go="login">Entrar</button></p>
+      </form>
+      <form id="form-reset" class="auth-form" hidden novalidate>
+        <h2>Redefinir senha</h2>
+        <p class="auth-sub">Enviaremos um link por e-mail.</p>
+        <label class="af">E-mail<input type="email" name="email" autocomplete="email" required></label>
+        <div class="auth-msg" role="alert"></div>
+        <button type="submit" class="auth-btn">Enviar link</button>
+        <p class="auth-switch"><button type="button" class="auth-link" data-go="login">Voltar</button></p>
+      </form>
+    </div>
+  </main>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="hlogo"><span class="hlogo-mark"></span> Oreon Cronograma</div>
+  <div class="hflex"></div>
+  <div class="hactions">
+    <button class="btn-hdr primary" id="btn-nova-obra" onclick="abrirModalNova()">
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Nova Obra
+    </button>
+    <div id="user-menu">
+      <button id="user-btn" type="button">
+        <span class="ua" id="user-avatar">—</span>
+        <span id="user-nome">...</span>
+        <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
+      </button>
+      <div id="user-drop" hidden>
+        <div class="ud-head"><strong class="ud-name"></strong><span class="ud-mail"></span></div>
+        <button type="button" data-act="senha">Alterar senha por e-mail</button>
+        <button type="button" data-act="logout" class="ud-danger">Sair</button>
+      </div>
+    </div>
+    <span id="sync-status" class="sync-local">Carregando...</span>
+  </div>
+</header>
+
+<!-- CONTEÚDO -->
+<div id="content" style="display:none">
+  <div class="page-title">Painel de Obras</div>
+  <div class="page-sub" id="page-sub">Gerencie seus cronogramas ativos</div>
+
+  <div id="alerta-semana" class="alerta-semana" style="display:none">
+    ⚠️ Algumas obras não receberam preenchimento nesta semana.
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="ativas">Ativas</button>
+    <button class="filter-btn" data-filter="todas">Todas</button>
+    <button class="filter-btn" data-filter="arquivadas">Arquivadas</button>
+    <div class="filter-search">
+      <input type="text" id="busca" placeholder="🔍 Buscar obra..." oninput="renderCards()">
+    </div>
+  </div>
+
+  <div class="obras-grid" id="obras-grid">
+    <div class="empty-state">
+      <div class="es-icon">📋</div>
+      <p>Carregando obras...</p>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVA OBRA -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h3 id="modal-title">Nova Obra</h3>
+    <div class="mfield">
+      <label>Nome da Obra *</label>
+      <input type="text" id="m-nome" placeholder="Ex: Condomínio Piemonte" />
+    </div>
+    <div class="mfield">
+      <label>Cliente / Contratante</label>
+      <input type="text" id="m-cliente" placeholder="Ex: Incorporadora XYZ" />
+    </div>
+    <div class="mfield">
+      <label>Supervisor Responsável</label>
+      <input type="text" id="m-supervisor" placeholder="Nome do responsável técnico" />
+    </div>
+    <div class="mfooter">
+      <button class="mbtn cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="mbtn ok" onclick="salvarObra()">Criar Obra</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+(function () {
+  const cfg = window.FIREBASE_CONFIG || {};
+  if (!cfg.apiKey) { document.getElementById('loading').classList.remove('show'); alert('firebase-config.js não encontrado.'); return; }
+
+  firebase.initializeApp(cfg);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+  auth.languageCode = 'pt';
+  try { db.enablePersistence({ synchronizeTabs: true }).catch(() => {}); } catch (e) {}
+
+  // ── refs ──
+  const userRef  = uid => db.collection('users').doc(uid);
+  const projsRef = uid => userRef(uid).collection('projetos');
+  const linksRef = () => db.collection('links');
+
+  // ── estado ──
+  let currentUser = null;
+  let obras = [];
+  let filtroAtivo = 'ativas';
+  let unsubObras = null;
+  let editingId = null;
+
+  // ── utils ──
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const semanaISO = d => {
+    const date = d ? new Date(d) : new Date();
+    date.setHours(0,0,0,0);
+    date.setDate(date.getDate() + 4 - (date.getDay() || 7));
+    const yearStart = new Date(date.getFullYear(), 0, 1);
+    const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+    return date.getFullYear() + '-S' + String(week).padStart(2, '0');
+  };
+  const semanaAtual = () => semanaISO();
+  const inicioSemana = () => {
+    const d = new Date(); d.setHours(0,0,0,0);
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() - day + 1);
+    return d;
+  };
+
+  function toast(msg, dur = 3000) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), dur);
+  }
+
+  const setSync = (k, label) => {
+    const el = document.getElementById('sync-status');
+    el.textContent = label;
+    el.className = { ok:'sync-ok', busy:'sync-busy', warn:'sync-warn', err:'sync-err', local:'sync-local' }[k] || 'sync-local';
+  };
+
+  // ── AUTH ──
+  const authOv = document.getElementById('auth-overlay');
+  const forms = {
+    login:  document.getElementById('form-login'),
+    signup: document.getElementById('form-signup'),
+    reset:  document.getElementById('form-reset'),
+  };
+  const loadingEl = document.getElementById('auth-loading');
+
+  const showForm = name => {
+    loadingEl.hidden = true;
+    Object.entries(forms).forEach(([k, f]) => {
+      f.hidden = k !== name;
+      f.querySelector('.auth-msg').textContent = '';
+      f.querySelector('.auth-msg').className = 'auth-msg';
+    });
+    const first = forms[name].querySelector('input:not([type=checkbox])');
+    setTimeout(() => first && first.focus(), 50);
+  };
+  const openAuth = form => { authOv.classList.remove('closing'); authOv.style.display = ''; showForm(form); };
+  const closeAuth = () => { authOv.classList.add('closing'); setTimeout(() => { authOv.style.display = 'none'; }, 250); };
+
+  authOv.addEventListener('click', e => {
+    const go = e.target.closest('[data-go]');
+    if (go) showForm(go.dataset.go);
+    const eye = e.target.closest('.pw-eye');
+    if (eye) { const inp = eye.previousElementSibling; const show = inp.type === 'password'; inp.type = show ? 'text' : 'password'; eye.textContent = show ? 'Ocultar' : 'Mostrar'; }
+  });
+
+  const ERR = {
+    'auth/invalid-email':'E-mail inválido.','auth/user-not-found':'E-mail ou senha incorretos.',
+    'auth/wrong-password':'E-mail ou senha incorretos.','auth/invalid-credential':'E-mail ou senha incorretos.',
+    'auth/invalid-login-credentials':'E-mail ou senha incorretos.','auth/missing-password':'Informe a senha.',
+    'auth/email-already-in-use':'Já existe uma conta com este e-mail.','auth/weak-password':'Mínimo de 6 caracteres.',
+    'auth/too-many-requests':'Muitas tentativas. Aguarde e tente de novo.',
+    'auth/network-request-failed':'Sem conexão com a internet.',
+  };
+  const errMsg = e => ERR[e && e.code] || 'Não foi possível concluir. (' + (e && e.code || 'erro') + ')';
+  const busy = (form, on, label) => { const b = form.querySelector('.auth-btn'); b.disabled = on; if (on) { b.dataset.l = b.textContent; b.textContent = label; } else if (b.dataset.l) b.textContent = b.dataset.l; };
+  const msgAuth = (form, text, ok) => { const m = form.querySelector('.auth-msg'); m.textContent = text; m.className = 'auth-msg' + (text ? (ok ? ' ok' : ' err') : ''); };
+  const emailOk = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+  forms.login.addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = forms.login, email = f.email.value.trim(), senha = f.senha.value;
+    if (!emailOk(email)) return msgAuth(f, 'Informe um e-mail válido.');
+    if (!senha) return msgAuth(f, 'Informe a senha.');
+    msgAuth(f, ''); busy(f, true, 'Entrando...');
+    try {
+      await auth.setPersistence(f.lembrar.checked ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION);
+      await auth.signInWithEmailAndPassword(email, senha);
+    } catch (err) { msgAuth(f, errMsg(err)); busy(f, false); }
+  });
+
+  forms.signup.addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = forms.signup, nome = f.nome.value.trim(), email = f.email.value.trim(), senha = f.senha.value;
+    if (nome.length < 2) return msgAuth(f, 'Informe seu nome.');
+    if (!emailOk(email)) return msgAuth(f, 'Informe um e-mail válido.');
+    if (senha.length < 6) return msgAuth(f, 'Mínimo 6 caracteres.');
+    if (senha !== f.senha2.value) return msgAuth(f, 'Senhas não conferem.');
+    msgAuth(f, ''); busy(f, true, 'Criando conta...');
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(email, senha);
+      await cred.user.updateProfile({ displayName: nome });
+      await userRef(cred.user.uid).set({ nome, email, criadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      // migrar o cronograma antigo (users/{uid}/projetos/principal) se existir
+      await migrarProjeto(cred.user.uid);
+    } catch (err) { msgAuth(f, errMsg(err)); busy(f, false); }
+  });
+
+  forms.reset.addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = forms.reset, email = f.email.value.trim();
+    if (!emailOk(email)) return msgAuth(f, 'Informe um e-mail válido.');
+    busy(f, true, 'Enviando...');
+    try { await auth.sendPasswordResetEmail(email); msgAuth(f, 'Link enviado! Verifique seu e-mail e o spam.', true); }
+    catch (err) { msgAuth(f, errMsg(err)); }
+    busy(f, false);
+  });
+
+  // ── USER MENU ──
+  document.getElementById('user-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    const d = document.getElementById('user-drop');
+    d.hidden = !d.hidden;
+  });
+  document.addEventListener('click', () => { document.getElementById('user-drop').hidden = true; });
+  document.getElementById('user-drop').addEventListener('click', async e => {
+    const act = e.target.dataset.act; if (!act) return;
+    document.getElementById('user-drop').hidden = true;
+    if (act === 'senha') {
+      try { await auth.sendPasswordResetEmail(currentUser.email); toast('Link de alteração de senha enviado para ' + currentUser.email); }
+      catch (err) { toast(errMsg(err)); }
+    }
+    if (act === 'logout') { if (unsubObras) unsubObras(); await auth.signOut(); location.reload(); }
+  });
+
+  function preencherUser(u) {
+    const nome = u.displayName || u.email.split('@')[0];
+    const ini = nome.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+    document.getElementById('user-avatar').textContent = ini;
+    document.getElementById('user-nome').textContent = nome.split(' ')[0];
+    document.querySelector('.ud-name').textContent = nome;
+    document.querySelector('.ud-mail').textContent = u.email;
+  }
+
+  // ── MIGRAÇÃO DO PROJETO ANTIGO ──
+  async function migrarProjeto(uid) {
+    try {
+      const principalSnap = await projsRef(uid).doc('principal').get();
+      if (!principalSnap.exists) return;
+      const dados = principalSnap.data().data || {};
+      if (!dados.tasks || !dados.tasks.length) return;
+      const nomeObra = dados.projectName || 'Obra importada';
+      const existentes = await projsRef(uid).orderBy('criadoEm', 'asc').limit(1).get();
+      // Só migra se não há obras ainda (para não duplicar em logins subsequentes)
+      if (!existentes.empty) return;
+      await projsRef(uid).add({
+        nome: nomeObra,
+        cliente: '',
+        supervisorName: dados.supervisorName || '',
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        arquivada: false,
+        data: dados,
+        semanaAtual: semanaAtual(),
+        ultimoEnvio: null,
+      });
+      toast('Cronograma anterior importado com sucesso!', 4000);
+    } catch (e) {
+      console.warn('[migração]', e);
+    }
+  }
+
+  // ── CARREGAR OBRAS (tempo real) ──
+  function escutarObras(uid) {
+    setSync('busy', 'Carregando...');
+    if (unsubObras) unsubObras();
+    unsubObras = projsRef(uid)
+      .orderBy('criadoEm', 'desc')
+      .onSnapshot(snap => {
+        obras = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Migrar o projeto principal se for o primeiro login
+        if (obras.length === 0) migrarProjeto(uid);
+        setSync('ok', 'Sincronizado');
+        renderCards();
+        verificarAlertas();
+      }, err => { console.error('[obras]', err); setSync('err', 'Erro'); });
+  }
+
+  // ── RENDERIZAR CARDS ──
+  let filtroDropAberto = null;
+  window.renderCards = function() {
+    const grid = document.getElementById('obras-grid');
+    const busca = document.getElementById('busca').value.toLowerCase();
+
+    let lista = obras.filter(o => {
+      if (busca && !o.nome.toLowerCase().includes(busca) && !(o.cliente || '').toLowerCase().includes(busca)) return false;
+      if (filtroAtivo === 'ativas') return !o.arquivada;
+      if (filtroAtivo === 'arquivadas') return o.arquivada;
+      return true;
+    });
+
+    const semana = semanaAtual();
+    const hoje = new Date();
+
+    grid.innerHTML = '';
+
+    // Botão nova obra
+    const divNova = document.createElement('div');
+    divNova.className = 'card-nova';
+    divNova.onclick = abrirModalNova;
+    divNova.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Nova Obra</span>`;
+    grid.appendChild(divNova);
+
+    if (lista.length === 0) {
+      const emp = document.createElement('div');
+      emp.className = 'empty-state';
+      emp.innerHTML = `<div class="es-icon">📋</div><p>${filtroAtivo === 'arquivadas' ? 'Nenhuma obra arquivada.' : 'Nenhuma obra ainda.<br>Clique em <strong>Nova Obra</strong> para começar.'}</p>`;
+      grid.appendChild(emp);
+      return;
+    }
+
+    lista.forEach(obra => {
+      const dados = obra.data || {};
+      const tasks = dados.tasks || [];
+      const pctGeral = tasks.length
+        ? Math.round(tasks.reduce((s, t) => s + (t.percentComplete || 0), 0) / tasks.length)
+        : 0;
+
+      // Verificar status
+      let statusLabel = 'No prazo';
+      let statusClass = 'status-prazo';
+      if (obra.arquivada) { statusLabel = 'Arquivada'; statusClass = 'status-arquivada'; }
+      else if (pctGeral >= 100) { statusLabel = 'Concluída'; statusClass = 'status-concluida'; }
+      else {
+        const atrasadas = tasks.filter(t => {
+          if (!t.end) return false;
+          return new Date(t.end) < hoje && (t.percentComplete || 0) < 100;
+        });
+        if (atrasadas.length) { statusLabel = 'Atrasada'; statusClass = 'status-atrasada'; }
+      }
+
+      // Badge de envio da semana
+      let badgeHtml = '';
+      const enviouSemana = obra.semanaUltimoEnvio === semana;
+      if (!obra.arquivada) {
+        if (enviouSemana) {
+          badgeHtml = `<div class="card-link-badge ok">✓ Atualizado esta semana</div>`;
+        } else {
+          const sexta = diasParaSexta();
+          if (sexta === 0) badgeHtml = `<div class="card-link-badge sem-envio">⚠️ Sexta — sem envio esta semana</div>`;
+          else badgeHtml = `<div class="card-link-badge">📅 ${sexta}d para sexta</div>`;
+        }
+      }
+
+      // Meta: nº tarefas e intervalo de datas
+      const comDatas = tasks.filter(t => t.start && t.end);
+      let dataRange = '—';
+      if (comDatas.length) {
+        const ini = new Date(Math.min(...comDatas.map(t => new Date(t.start))));
+        const fim = new Date(Math.max(...comDatas.map(t => new Date(t.end))));
+        dataRange = ini.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' – ' + fim.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+      }
+
+      const pctClass = pctGeral >= 100 ? 'done' : (statusClass === 'status-atrasada' ? 'atrasada' : '');
+
+      const card = document.createElement('div');
+      card.className = 'obra-card' + (obra.arquivada ? ' arquivada' : '');
+      card.dataset.id = obra.id;
+      card.innerHTML = `
+        <div class="card-top">
+          <span class="card-status ${statusClass}">${esc(statusLabel)}</span>
+          <button class="card-menu-btn" data-menu="${obra.id}" title="Opções" onclick="toggleMenu(event,'${obra.id}')">⋯</button>
+        </div>
+        <div>
+          <div class="card-nome">${esc(obra.nome)}</div>
+          ${obra.cliente ? `<div class="card-cliente">${esc(obra.cliente)}</div>` : ''}
+        </div>
+        <div class="card-pct-wrap">
+          <div class="pct-row"><span class="pct-label">Progresso geral</span><span class="pct-val">${pctGeral}%</span></div>
+          <div class="pct-bar"><div class="pct-fill ${pctClass}" style="width:${pctGeral}%"></div></div>
+        </div>
+        <div class="card-meta">
+          <span class="meta-item">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3" width="13" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 1.5v3M11 1.5v3M1.5 7h13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            ${dataRange}
+          </span>
+          <span class="meta-item">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v4l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            ${tasks.length} etapa${tasks.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div class="card-bottom">${badgeHtml}</div>`;
+
+      // Abrir cronograma ao clicar (exceto no botão de menu)
+      card.addEventListener('click', e => {
+        if (e.target.closest('.card-menu-btn') || e.target.closest('.card-drop')) return;
+        abrirObra(obra.id);
+      });
+
+      grid.appendChild(card);
+    });
+
+    // Contar obras sem envio nesta semana
+    const semFiltro = obras.filter(o => !o.arquivada && o.semanaUltimoEnvio !== semana);
+    document.getElementById('alerta-semana').style.display = semFiltro.length > 0 && diasParaSexta() === 0 ? '' : 'none';
+  };
+
+  function diasParaSexta() {
+    const hoje = new Date().getDay(); // 0=dom, 5=sexta
+    if (hoje === 5) return 0;
+    return ((5 - hoje + 7) % 7) || 7;
+  }
+
+  function verificarAlertas() {
+    const semFiltro = obras.filter(o => !o.arquivada && o.semanaUltimoEnvio !== semanaAtual());
+    document.getElementById('alerta-semana').style.display =
+      semFiltro.length > 0 && diasParaSexta() <= 1 ? '' : 'none';
+  }
+
+  // ── MENU DO CARD ──
+  window.toggleMenu = function(e, id) {
+    e.stopPropagation();
+    // Fechar qualquer menu aberto
+    document.querySelectorAll('.card-drop').forEach(d => d.remove());
+    if (filtroDropAberto === id) { filtroDropAberto = null; return; }
+    filtroDropAberto = id;
+    const obra = obras.find(o => o.id === id);
+    if (!obra) return;
+
+    const drop = document.createElement('div');
+    drop.className = 'card-drop';
+    drop.innerHTML = `
+      <button data-act="abrir">📂 Abrir cronograma</button>
+      <button data-act="link">🔗 Gerar link desta semana</button>
+      <button data-act="editar">✏️ Renomear / editar</button>
+      <div class="sep"></div>
+      <button data-act="${obra.arquivada ? 'desarquivar' : 'arquivar'}">${obra.arquivada ? '📤 Desarquivar' : '📦 Arquivar obra'}</button>
+    `;
+    drop.addEventListener('click', async ev => {
+      ev.stopPropagation();
+      const act = ev.target.closest('button')?.dataset.act;
+      drop.remove(); filtroDropAberto = null;
+      if (act === 'abrir') abrirObra(id);
+      if (act === 'link') gerarLink(id);
+      if (act === 'editar') abrirModalEditar(id);
+      if (act === 'arquivar') arquivarObra(id, true);
+      if (act === 'desarquivar') arquivarObra(id, false);
+    });
+
+    const btn = e.target.closest('.card-menu-btn');
+    btn.closest('.obra-card').style.position = 'relative';
+    btn.closest('.obra-card').appendChild(drop);
+
+    setTimeout(() => document.addEventListener('click', () => { drop.remove(); filtroDropAberto = null; }, { once: true }), 10);
+  };
+
+  // ── AÇÕES ──
+  window.abrirObra = function(id) {
+    // Abre o cronograma passando o ID do projeto pela URL
+    window.location.href = 'cronograma.html?obra=' + encodeURIComponent(id);
+  };
+
+  window.abrirModalNova = function() {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'Nova Obra';
+    document.getElementById('m-nome').value = '';
+    document.getElementById('m-cliente').value = '';
+    document.getElementById('m-supervisor').value = '';
+    document.querySelector('.mbtn.ok').textContent = 'Criar Obra';
+    document.getElementById('modal-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('m-nome').focus(), 50);
+  };
+
+  function abrirModalEditar(id) {
+    const obra = obras.find(o => o.id === id);
+    if (!obra) return;
+    editingId = id;
+    document.getElementById('modal-title').textContent = 'Editar Obra';
+    document.getElementById('m-nome').value = obra.nome || '';
+    document.getElementById('m-cliente').value = obra.cliente || '';
+    document.getElementById('m-supervisor').value = (obra.data && obra.data.supervisorName) || '';
+    document.querySelector('.mbtn.ok').textContent = 'Salvar';
+    document.getElementById('modal-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('m-nome').focus(), 50);
+  }
+
+  window.fecharModal = function() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  };
+
+  window.salvarObra = async function() {
+    const nome = document.getElementById('m-nome').value.trim();
+    const cliente = document.getElementById('m-cliente').value.trim();
+    const supervisor = document.getElementById('m-supervisor').value.trim();
+    if (!nome) { document.getElementById('m-nome').focus(); return; }
+    document.querySelector('.mbtn.ok').disabled = true;
+    try {
+      if (editingId) {
+        // Editar
+        const obra = obras.find(o => o.id === editingId);
+        const dadosAtual = obra?.data || {};
+        await projsRef(currentUser.uid).doc(editingId).update({
+          nome,
+          cliente,
+          'data.supervisorName': supervisor,
+          'data.projectName': nome,
+        });
+        toast('Obra atualizada!');
+      } else {
+        // Nova
+        await projsRef(currentUser.uid).add({
+          nome,
+          cliente,
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          arquivada: false,
+          semanaUltimoEnvio: null,
+          data: {
+            projectName: nome,
+            supervisorName: supervisor,
+            tasks: [],
+            nextId: 1,
+            relatorios: [],
+            relNextId: 1,
+          },
+        });
+        toast('Obra criada!');
+      }
+      fecharModal();
+    } catch (e) { toast('Erro ao salvar: ' + e.message); }
+    document.querySelector('.mbtn.ok').disabled = false;
+  };
+
+  window.arquivarObra = async function(id, arquivar) {
+    try {
+      await projsRef(currentUser.uid).doc(id).update({ arquivada: arquivar });
+      toast(arquivar ? 'Obra arquivada.' : 'Obra reativada.');
+    } catch (e) { toast('Erro: ' + e.message); }
+  };
+
+  // ── GERAR LINK SEMANAL ──
+  window.gerarLink = async function(id) {
+    const obra = obras.find(o => o.id === id);
+    if (!obra) return;
+    const semana = semanaAtual();
+    const uid = currentUser.uid;
+
+    // Verificar se já existe link para esta obra/semana
+    try {
+      const existing = await linksRef()
+        .where('obraId', '==', id)
+        .where('ownerUid', '==', uid)
+        .where('semana', '==', semana)
+        .get();
+
+      let token;
+      if (!existing.empty) {
+        token = existing.docs[0].id;
+        toast('Link desta semana já existe — copiado!');
+      } else {
+        // Gerar token único
+        token = uid.substring(0, 4) + Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+        const tasks = (obra.data && obra.data.tasks) || [];
+        await linksRef().doc(token).set({
+          obraId: id,
+          ownerUid: uid,
+          semana,
+          obraNome: obra.nome,
+          cliente: obra.cliente || '',
+          supervisorName: (obra.data && obra.data.supervisorName) || '',
+          etapas: tasks.map(t => ({
+            id: t.id,
+            nome: t.name,
+            percentComplete: t.percentComplete || 0,
+            responsavel: t.responsavel || '',
+            start: t.start || null,
+            end: t.end || null,
+          })),
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          expiresAt: proximaSegunda(),
+          usado: false,
+          envios: [],
+        });
+        toast('Link gerado!');
+      }
+
+      const baseUrl = location.origin + location.pathname.replace(/[^/]*$/, '');
+      const link = baseUrl + 'preencher.html?t=' + token;
+
+      // Copiar para área de transferência
+      try {
+        await navigator.clipboard.writeText(link);
+      } catch (e) {
+        // fallback
+        const el = document.createElement('textarea');
+        el.value = link; document.body.appendChild(el); el.select();
+        document.execCommand('copy'); document.body.removeChild(el);
+      }
+
+      // Mensagem para WhatsApp
+      const msg = '🏗️ *Relatório Semanal — ' + obra.nome + '*\n\nOlá equipe! Já é sexta, por favor preencham o andamento desta semana pelo link abaixo:\n\n' + link + '\n\n_O link é válido apenas para esta semana._';
+      const wpUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
+
+      if (confirm('Link copiado! 📋\n\n' + link + '\n\nDeseja abrir o WhatsApp Web para enviar?')) {
+        window.open(wpUrl, '_blank');
+      }
+    } catch (e) {
+      console.error('[link]', e);
+      toast('Erro ao gerar link: ' + e.message);
+    }
+  };
+
+  function proximaSegunda() {
+    const d = new Date();
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() + (8 - day));
+    d.setHours(23, 59, 59, 0);
+    return d.toISOString();
+  }
+
+  // ── FILTROS ──
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filtroAtivo = btn.dataset.filter;
+      renderCards();
+    });
+  });
+
+  // ── MODAL OVERLAY CLICK ──
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) fecharModal();
+  });
+
+  // ── AUTH STATE ──
+  auth.onAuthStateChanged(async user => {
+    document.getElementById('loading').classList.remove('show');
+    if (user) {
+      currentUser = user;
+      preencherUser(user);
+      await migrarProjeto(user.uid);
+      document.getElementById('auth-overlay').style.display = 'none';
+      document.getElementById('content').style.display = '';
+      escutarObras(user.uid);
+    } else {
+      currentUser = null;
+      document.getElementById('content').style.display = 'none';
+      document.getElementById('auth-overlay').style.display = '';
+      showForm('login');
+    }
+  });
+
+  // Fechar drops ao clicar fora
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.card-drop').forEach(d => d.remove());
+    filtroDropAberto = null;
+  });
+})();
+</script>
+</body>
+</html>

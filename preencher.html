@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oreon — Relatório Semanal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f1f5f9; --surface: #fff; --border: #e2e8f0; --border2: #cbd5e1;
+      --text: #0f172a; --text2: #475569; --text3: #94a3b8;
+      --accent: #2563eb; --accent-soft: #eff6ff; --accent-hover: #1d4ed8;
+      --green: #16a34a; --green-soft: #f0fdf4;
+      --yellow: #d97706; --yellow-soft: #fffbeb;
+      --red: #dc2626; --red-soft: #fef2f2;
+      --shadow: 0 1px 4px rgba(0,0,0,.07); --shadow-md: 0 4px 12px rgba(0,0,0,.09);
+      --radius: 10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0f172a; --surface: #1e293b; --border: #334155; --border2: #475569; --text: #f1f5f9; --text2: #94a3b8; --text3: #64748b; --accent-soft: #1e3a5f; --green-soft: #052e16; --yellow-soft: #431407; --red-soft: #450a0a; }
+    }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── HEADER ── */
+    header { background: #1e293b; color: #f1f5f9; padding: 0 20px; height: 50px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+    .hlogo { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .hlogo-mark { width: 20px; height: 20px; background: #2563eb; border-radius: 5px; flex-shrink: 0; }
+    .hsep { height: 18px; width: 1px; background: rgba(255,255,255,.15); }
+    .hsubtitle { font-size: 12px; color: #94a3b8; }
+
+    /* ── CONTEÚDO ── */
+    #content { max-width: 680px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    .obra-info { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 20px; box-shadow: var(--shadow); }
+    .obra-nome { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .obra-meta { font-size: 12px; color: var(--text3); display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+    .obra-meta span { display: flex; align-items: center; gap: 4px; }
+
+    /* ── SEÇÃO DO RESPONDENTE ── */
+    .section { margin-bottom: 20px; }
+    .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text3); margin-bottom: 10px; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 12px; font-weight: 600; color: var(--text2); }
+    .field input, .field textarea, .field select { border: 1px solid var(--border2); border-radius: 7px; padding: 9px 12px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border .15s, box-shadow .15s; }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+
+    /* ── ETAPAS ── */
+    .etapa-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+    .etapa-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+    .etapa-nome { font-size: 13.5px; font-weight: 700; color: var(--text); }
+    .etapa-resp { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .pct-badge { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 5px; white-space: nowrap; flex-shrink: 0; }
+
+    .pct-wrap { margin-bottom: 12px; }
+    .pct-label-row { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text3); margin-bottom: 4px; }
+    .pct-novo-val { font-weight: 700; color: var(--text); }
+    input[type=range] { width: 100%; height: 6px; -webkit-appearance: none; background: var(--border); border-radius: 99px; outline: none; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+    input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 2px solid #fff; }
+
+    .obs-wrap .field textarea { width: 100%; resize: vertical; min-height: 70px; }
+
+    /* ── FOTOS ── */
+    .fotos-wrap { margin-top: 12px; }
+    .fotos-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+    .fotos-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+    .foto-thumb { width: 72px; height: 72px; border-radius: 7px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; }
+    .foto-add-btn { width: 72px; height: 72px; border-radius: 7px; border: 2px dashed var(--border2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; background: var(--surface); transition: border-color .15s, background .15s; font-size: 10px; color: var(--text3); }
+    .foto-add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .foto-add-btn svg { width: 20px; height: 20px; }
+    .foto-remove { position: relative; }
+    .foto-remove::after { content: '✕'; position: absolute; top: -4px; right: -4px; background: var(--red); color: #fff; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit; line-height: 1; }
+
+    /* ── OBS GERAL ── */
+    .obs-geral-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+    .obs-geral-wrap textarea { width: 100%; min-height: 80px; resize: vertical; border: 1px solid var(--border2); border-radius: 7px; padding: 9px 12px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; }
+    .obs-geral-wrap textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+
+    /* ── ENVIAR ── */
+    .btn-enviar { width: 100%; background: var(--green); color: #fff; border: none; border-radius: 9px; padding: 14px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; transition: background .15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-enviar:hover { background: #15803d; }
+    .btn-enviar:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* ── LOADING / ERROR / SUCCESS ── */
+    #tela-loading, #tela-erro, #tela-sucesso { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; padding: 40px 20px; gap: 14px; }
+    .spin { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .tela-icon { font-size: 52px; }
+    .tela-titulo { font-size: 20px; font-weight: 700; }
+    .tela-sub { font-size: 14px; color: var(--text3); max-width: 380px; line-height: 1.5; }
+    .tela-err-detalhe { font-size: 12px; color: var(--red); background: var(--red-soft); padding: 8px 14px; border-radius: 7px; max-width: 400px; }
+    .tela-succ-sub { color: var(--text2); }
+
+    /* ── TOAST ── */
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #f1f5f9; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 9999; pointer-events: none; opacity: 0; transition: opacity .3s; white-space: nowrap; }
+    #toast.show { opacity: 1; }
+
+    /* ── RESPONSIVO ── */
+    @media (max-width: 500px) { #content { padding: 16px 12px 60px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hlogo"><span class="hlogo-mark"></span> Oreon Cronograma</div>
+  <div class="hsep"></div>
+  <div class="hsubtitle">Preenchimento Semanal</div>
+</header>
+
+<!-- LOADING -->
+<div id="tela-loading">
+  <div class="spin"></div>
+  <p style="color:var(--text3);font-size:13px;">Carregando...</p>
+</div>
+
+<!-- ERRO -->
+<div id="tela-erro" style="display:none">
+  <div class="tela-icon">⚠️</div>
+  <div class="tela-titulo" id="err-titulo">Link inválido</div>
+  <div class="tela-sub" id="err-sub">Este link não existe ou já foi utilizado.</div>
+  <div class="tela-err-detalhe" id="err-detalhe" style="display:none"></div>
+</div>
+
+<!-- SUCESSO -->
+<div id="tela-sucesso" style="display:none">
+  <div class="tela-icon">✅</div>
+  <div class="tela-titulo">Relatório enviado!</div>
+  <div class="tela-sub tela-succ-sub" id="succ-sub">Obrigado! As informações foram registradas com sucesso.</div>
+</div>
+
+<!-- FORMULÁRIO -->
+<div id="tela-form" style="display:none">
+  <div id="content">
+
+    <!-- Info da obra -->
+    <div class="obra-info">
+      <div class="obra-nome" id="obra-nome-display"></div>
+      <div class="obra-meta">
+        <span>📅 Semana: <strong id="semana-display"></strong></span>
+        <span id="cliente-display-wrap" style="display:none">🏢 <span id="cliente-display"></span></span>
+      </div>
+    </div>
+
+    <!-- Quem está preenchendo -->
+    <div class="section">
+      <div class="section-title">Quem está preenchendo?</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="field">
+          <label>Seu nome *</label>
+          <input type="text" id="f-nome" placeholder="Nome completo ou apelido" autocomplete="name" />
+        </div>
+        <div class="field">
+          <label>Função / Cargo</label>
+          <input type="text" id="f-funcao" placeholder="Ex: Técnico, Encarregado..." />
+        </div>
+      </div>
+    </div>
+
+    <!-- Etapas -->
+    <div class="section">
+      <div class="section-title">Andamento das Etapas</div>
+      <div id="etapas-container"></div>
+    </div>
+
+    <!-- Observações gerais -->
+    <div class="section">
+      <div class="section-title">Observações Gerais</div>
+      <div class="obs-geral-wrap">
+        <div class="field" style="margin-bottom:0">
+          <label style="margin-bottom:6px;display:block">Ocorrências, imprevistos ou informações importantes desta semana:</label>
+          <textarea id="obs-geral" placeholder="Ex: Chuva na quarta atrasou a fixação da infraestrutura. Material de cabeamento chegou na sexta."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botão enviar -->
+    <button class="btn-enviar" id="btn-enviar" onclick="enviarRelatorio()">
+      <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Enviar Relatório
+    </button>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+(function () {
+  const cfg = window.FIREBASE_CONFIG || {};
+  if (!cfg.apiKey) { mostrarErro('Configuração ausente', 'firebase-config.js não encontrado.'); return; }
+
+  // Firestore SEM autenticação (acesso via regras de segurança por token)
+  firebase.initializeApp(cfg);
+  const db = firebase.firestore();
+
+  // Pegar token da URL
+  const params = new URLSearchParams(location.search);
+  const token = params.get('t');
+
+  if (!token) { mostrarErro('Link inválido', 'Nenhum token encontrado nesta URL. Solicite um novo link ao responsável.'); return; }
+
+  let linkData = null;
+  const fotos = {}; // { etapaId: [{ base64, nome }] }
+
+  function toast(msg, dur = 3000) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), dur);
+  }
+
+  function mostrarErro(titulo, sub, detalhe) {
+    document.getElementById('tela-loading').style.display = 'none';
+    document.getElementById('tela-form').style.display = 'none';
+    document.getElementById('tela-sucesso').style.display = 'none';
+    document.getElementById('tela-erro').style.display = '';
+    document.getElementById('err-titulo').textContent = titulo;
+    document.getElementById('err-sub').textContent = sub;
+    if (detalhe) {
+      document.getElementById('err-detalhe').textContent = detalhe;
+      document.getElementById('err-detalhe').style.display = '';
+    }
+  }
+
+  function semanaLabel(semanaISO) {
+    // Ex: "2026-S39" → calcula intervalo seg–dom
+    if (!semanaISO) return semanaISO;
+    const [ano, s] = semanaISO.split('-S');
+    const semNum = parseInt(s);
+    // Calcular segunda-feira da semana ISO
+    const jan4 = new Date(parseInt(ano), 0, 4);
+    const startOfWeek1 = new Date(jan4);
+    startOfWeek1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
+    const seg = new Date(startOfWeek1);
+    seg.setDate(seg.getDate() + (semNum - 1) * 7);
+    const dom = new Date(seg);
+    dom.setDate(dom.getDate() + 6);
+    const fmt = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return fmt(seg) + ' a ' + fmt(dom);
+  }
+
+  async function carregarLink() {
+    try {
+      const snap = await db.collection('links').doc(token).get();
+      if (!snap.exists) {
+        mostrarErro('Link não encontrado', 'Este link não existe. Solicite um novo link ao responsável.'); return;
+      }
+      linkData = snap.data();
+
+      // Checar validade
+      if (linkData.expiresAt) {
+        const exp = new Date(linkData.expiresAt);
+        if (exp < new Date()) {
+          mostrarErro('Link expirado', 'Este link era válido somente até ' + exp.toLocaleDateString('pt-BR') + '. Solicite um novo link ao responsável.'); return;
+        }
+      }
+
+      // Checar se já foi submetido (para este token exato — permite múltiplos envios de membros diferentes)
+      // Não bloqueamos: cada membro pode enviar, o relatório acumula envios.
+
+      // Preencher tela
+      document.getElementById('obra-nome-display').textContent = linkData.obraNome || 'Obra';
+      document.getElementById('semana-display').textContent = semanaLabel(linkData.semana);
+      if (linkData.cliente) {
+        document.getElementById('cliente-display').textContent = linkData.cliente;
+        document.getElementById('cliente-display-wrap').style.display = '';
+      }
+
+      renderEtapas(linkData.etapas || []);
+
+      document.getElementById('tela-loading').style.display = 'none';
+      document.getElementById('tela-form').style.display = '';
+
+    } catch (e) {
+      console.error('[preencher]', e);
+      if (e.code === 'permission-denied') {
+        mostrarErro('Sem permissão', 'Não foi possível acessar este link. Ele pode ter expirado.', e.message);
+      } else {
+        mostrarErro('Erro ao carregar', 'Não foi possível carregar o formulário. Verifique sua conexão.', e.message);
+      }
+    }
+  }
+
+  function renderEtapas(etapas) {
+    const container = document.getElementById('etapas-container');
+    if (!etapas.length) {
+      container.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:20px 0;">Nenhuma etapa cadastrada nesta obra.</p>';
+      return;
+    }
+    container.innerHTML = '';
+    etapas.forEach(etapa => {
+      fotos[etapa.id] = [];
+      const card = document.createElement('div');
+      card.className = 'etapa-card';
+      card.dataset.id = etapa.id;
+
+      const pctAtual = etapa.percentComplete || 0;
+      card.innerHTML = `
+        <div class="etapa-header">
+          <div>
+            <div class="etapa-nome">${esc(etapa.nome)}</div>
+            ${etapa.responsavel ? `<div class="etapa-resp">Resp: ${esc(etapa.responsavel)}</div>` : ''}
+          </div>
+          <div class="pct-badge">Atual: ${pctAtual}%</div>
+        </div>
+        <div class="pct-wrap">
+          <div class="pct-label-row">
+            <span>Novo andamento:</span>
+            <span class="pct-novo-val" id="pct-val-${etapa.id}">${pctAtual}%</span>
+          </div>
+          <input type="range" min="0" max="100" value="${pctAtual}" id="range-${etapa.id}"
+            oninput="document.getElementById('pct-val-${etapa.id}').textContent=this.value+'%'" />
+        </div>
+        <div class="obs-wrap">
+          <div class="field">
+            <label style="font-size:11.5px;color:var(--text3)">Observação desta etapa (opcional)</label>
+            <textarea id="obs-${etapa.id}" rows="2" style="width:100%;resize:vertical;" placeholder="O que aconteceu nesta etapa esta semana?"></textarea>
+          </div>
+        </div>
+        <div class="fotos-wrap">
+          <div class="fotos-label">Fotos desta etapa</div>
+          <div class="fotos-grid" id="fotos-${etapa.id}">
+            <label class="foto-add-btn" title="Adicionar foto">
+              <input type="file" accept="image/*" multiple style="display:none" onchange="adicionarFotos(event,'${etapa.id}')">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Foto
+            </label>
+          </div>
+        </div>`;
+      container.appendChild(card);
+    });
+  }
+
+  window.adicionarFotos = function(e, etapaId) {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    const maxFotos = 8;
+    const restante = maxFotos - fotos[etapaId].length;
+    if (restante <= 0) { toast('Máximo de ' + maxFotos + ' fotos por etapa.'); return; }
+    const filesToProcess = files.slice(0, restante);
+    if (files.length > restante) toast('Limite de ' + maxFotos + ' fotos. Ignorando ' + (files.length - restante) + ' arquivo(s).');
+
+    filesToProcess.forEach(file => {
+      comprimirImagem(file, base64 => {
+        fotos[etapaId].push({ base64, nome: file.name });
+        renderFotos(etapaId);
+      });
+    });
+    e.target.value = ''; // reset para permitir re-upload do mesmo arquivo
+  };
+
+  function comprimirImagem(file, callback) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 1200, maxH = 900;
+        let w = img.width, h = img.height;
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        callback(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function renderFotos(etapaId) {
+    const grid = document.getElementById('fotos-' + etapaId);
+    // Manter o botão de adicionar
+    const addBtn = grid.querySelector('label.foto-add-btn');
+    grid.innerHTML = '';
+    fotos[etapaId].forEach((foto, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'foto-remove';
+      wrap.style.position = 'relative';
+      const img = document.createElement('img');
+      img.className = 'foto-thumb';
+      img.src = foto.base64;
+      img.title = foto.nome;
+      img.onclick = () => window.open(foto.base64, '_blank');
+      wrap.appendChild(img);
+      const rem = document.createElement('button');
+      rem.type = 'button';
+      rem.title = 'Remover foto';
+      rem.style.cssText = 'position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit;';
+      rem.textContent = '✕';
+      rem.onclick = () => { fotos[etapaId].splice(idx, 1); renderFotos(etapaId); };
+      wrap.appendChild(rem);
+      grid.appendChild(wrap);
+    });
+    grid.appendChild(addBtn);
+  }
+
+  function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  window.enviarRelatorio = async function() {
+    const nomeResponde = document.getElementById('f-nome').value.trim();
+    if (!nomeResponde) { document.getElementById('f-nome').focus(); toast('Informe seu nome antes de enviar.'); return; }
+
+    const btn = document.getElementById('btn-enviar');
+    btn.disabled = true;
+    btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Enviando...';
+
+    try {
+      const etapas = (linkData.etapas || []).map(et => ({
+        id: et.id,
+        nome: et.nome,
+        pctAnterior: et.percentComplete || 0,
+        pctNovo: parseInt(document.getElementById('range-' + et.id)?.value || et.percentComplete || 0),
+        obs: document.getElementById('obs-' + et.id)?.value.trim() || '',
+        fotos: (fotos[et.id] || []).map(f => f.base64),
+      }));
+
+      const envio = {
+        nomeResponde,
+        funcao: document.getElementById('f-funcao').value.trim(),
+        obsGeral: document.getElementById('obs-geral').value.trim(),
+        etapas,
+        enviadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        semana: linkData.semana,
+        obraId: linkData.obraId,
+      };
+
+      // Gravar no documento do link (array de envios)
+      await db.collection('links').doc(token).update({
+        envios: firebase.firestore.FieldValue.arrayUnion({
+          ...envio,
+          enviadoEm: new Date().toISOString(), // serverTimestamp não funciona dentro de arrayUnion
+        }),
+        usado: true,
+      });
+
+      // Gravar também no cronograma da obra como relatório semanal
+      // (o supervisor verá ao gerar o PDF)
+      const obraRef = db.collection('users').doc(linkData.ownerUid).collection('projetos').doc(linkData.obraId);
+      await obraRef.update({
+        semanaUltimoEnvio: linkData.semana,
+        [`enviosSemana.${linkData.semana}`]: firebase.firestore.FieldValue.arrayUnion({
+          token,
+          nomeResponde,
+          funcao: envio.funcao,
+          obsGeral: envio.obsGeral,
+          etapas: etapas.map(e => ({ id:e.id, nome:e.nome, pctNovo:e.pctNovo, obs:e.obs })),
+          totalFotos: etapas.reduce((s,e) => s + e.fotos.length, 0),
+          enviadoEm: new Date().toISOString(),
+        }),
+      });
+
+      document.getElementById('tela-form').style.display = 'none';
+      document.getElementById('tela-sucesso').style.display = '';
+      document.getElementById('succ-sub').textContent = 'Obrigado, ' + nomeResponde + '! As informações foram registradas com sucesso para a semana de ' + semanaLabel(linkData.semana) + '.';
+
+    } catch (e) {
+      console.error('[enviar]', e);
+      toast('Erro ao enviar: ' + e.message, 5000);
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Enviar Relatório';
+    }
+  };
+
+  function semanaLabel(semanaISO) {
+    if (!semanaISO) return semanaISO;
+    const [ano, s] = semanaISO.split('-S');
+    const semNum = parseInt(s);
+    const jan4 = new Date(parseInt(ano), 0, 4);
+    const startOfWeek1 = new Date(jan4);
+    startOfWeek1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
+    const seg = new Date(startOfWeek1);
+    seg.setDate(seg.getDate() + (semNum - 1) * 7);
+    const dom = new Date(seg);
+    dom.setDate(dom.getDate() + 6);
+    const fmt = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return fmt(seg) + ' a ' + fmt(dom);
+  }
+
+  carregarLink();
+})();
+</script>
+</body>
+</html>

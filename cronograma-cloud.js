@@ -2,6 +2,10 @@
 //  CRONOGRAMA DE OBRAS — Conta, nuvem (Firebase) e tour guiado
 //  Depende de: cronograma.js (state, save, render, STORAGE_KEY...)
 //              firebase-config.js (window.FIREBASE_CONFIG)
+//
+//  v2: suporte a múltiplos projetos via URL ?obra={obraId}
+//      Cada obra salva em users/{uid}/projetos/{obraId}
+//      Botão "Gerar link da semana" na toolbar
 // ════════════════════════════════════════════════════════
 (function () {
   const cfg = window.FIREBASE_CONFIG || {};
@@ -9,7 +13,11 @@
   const sdkLoaded = !!(window.firebase && firebase.initializeApp && firebase.auth && firebase.firestore);
   const enabled = hasConfig && sdkLoaded;
 
-  const Cloud = window.Cloud = { enabled, user: null, applying: false, lastSynced: null };
+  // ID da obra vindo da URL (?obra=ID). Sem ID = modo legado (principal)
+  const urlParams = new URLSearchParams(location.search);
+  const OBRA_ID = urlParams.get('obra') || 'principal';
+
+  const Cloud = window.Cloud = { enabled, user: null, applying: false, lastSynced: null, obraId: OBRA_ID };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   // JSON estável (chaves ordenadas) para comparar local x nuvem
@@ -41,6 +49,23 @@
 
   const toolbar = document.getElementById('toolbar');
   if (toolbar) {
+    // Botão "Painel" — voltar à tela de obras
+    const sepP = document.createElement('div'); sepP.className = 'tsep';
+    const bPainel = document.createElement('button');
+    bPainel.className = 'btn-t'; bPainel.id = 'btn-painel'; bPainel.title = 'Voltar ao painel de obras';
+    bPainel.innerHTML = '🏠 Painel';
+    bPainel.addEventListener('click', () => { window.location.href = 'painel.html'; });
+    toolbar.appendChild(sepP); toolbar.appendChild(bPainel);
+
+    // Botão "Gerar link da semana"
+    const sepL = document.createElement('div'); sepL.className = 'tsep';
+    const bLink = document.createElement('button');
+    bLink.className = 'btn-t'; bLink.id = 'btn-gerar-link'; bLink.title = 'Gerar link semanal para a equipe preencher';
+    bLink.innerHTML = '🔗 Link da semana';
+    bLink.addEventListener('click', () => Cloud.gerarLinkSemanal && Cloud.gerarLinkSemanal());
+    toolbar.appendChild(sepL); toolbar.appendChild(bLink);
+
+    // Botão Ajuda / Tour
     const sep = document.createElement('div'); sep.className = 'tsep';
     const b = document.createElement('button');
     b.className = 'btn-t'; b.id = 'btn-tour'; b.title = 'Rever o tour guiado';
@@ -69,8 +94,10 @@
   try { db.enablePersistence({ synchronizeTabs: true }).catch(() => {}); } catch (e) {}
 
   const userDoc = uid => db.collection('users').doc(uid);
-  const projDoc = uid => userDoc(uid).collection('projetos').doc('principal');
-  const pendingKey = uid => 'oreon_pending_' + uid;
+  // v2: projDoc agora usa OBRA_ID (pode ser 'principal' para compatibilidade)
+  const projDoc = uid => userDoc(uid).collection('projetos').doc(OBRA_ID);
+  const linksRef = () => db.collection('links');
+  const pendingKey = uid => 'oreon_pending_' + uid + '_' + OBRA_ID;
 
   // ── Tela de acesso ──
   const ov = document.createElement('div');
@@ -299,6 +326,96 @@
       .catch(err => { console.error('[nuvem]', err); setSync(navigator.onLine ? 'error' : 'offline'); });
   }
   function flushNow() { if (timer) { clearTimeout(timer); writeNow(); } }
+
+  // ── Gerar link semanal para a equipe preencher ──
+  Cloud.gerarLinkSemanal = async function() {
+    if (!Cloud.user) { toast('Faça login primeiro.', 2500); return; }
+    const uid = Cloud.user.uid;
+    const semana = semanaISO();
+    const tasks = state.tasks || [];
+
+    const btn = document.getElementById('btn-gerar-link');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando...'; }
+
+    try {
+      // Verificar se já existe link para esta obra/semana
+      const existing = await linksRef()
+        .where('obraId', '==', OBRA_ID)
+        .where('ownerUid', '==', uid)
+        .where('semana', '==', semana)
+        .get();
+
+      let token;
+      if (!existing.empty) {
+        token = existing.docs[0].id;
+      } else {
+        token = uid.substring(0, 4) + Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+        await linksRef().doc(token).set({
+          obraId: OBRA_ID,
+          ownerUid: uid,
+          semana,
+          obraNome: state.projectName || 'Obra',
+          cliente: '',
+          supervisorName: state.supervisorName || '',
+          etapas: tasks.map(t => ({
+            id: t.id,
+            nome: t.name,
+            percentComplete: t.percentComplete || 0,
+            responsavel: t.responsavel || '',
+            start: t.start || null,
+            end: t.end || null,
+          })),
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          expiresAt: proximaSegunda(),
+          usado: false,
+          envios: [],
+        });
+      }
+
+      const baseUrl = location.origin + location.pathname.replace(/[^/]*$/, '');
+      const link = baseUrl + 'preencher.html?t=' + token;
+
+      // Copiar para área de transferência
+      try {
+        await navigator.clipboard.writeText(link);
+      } catch (e) {
+        const el = document.createElement('textarea');
+        el.value = link; document.body.appendChild(el); el.select();
+        document.execCommand('copy'); document.body.removeChild(el);
+      }
+
+      const obraNome = state.projectName || 'Obra';
+      const msg = '🏗️ *Relatório Semanal — ' + obraNome + '*\n\nOlá equipe! Por favor preencham o andamento desta semana pelo link:\n\n' + link + '\n\n_Link válido apenas para esta semana._';
+      const wpUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
+
+      if (confirm('Link copiado! 📋\n\n' + link + '\n\nDeseja abrir o WhatsApp Web para enviar à equipe?')) {
+        window.open(wpUrl, '_blank');
+      }
+      toast('Link da semana copiado!', 3000);
+    } catch (e) {
+      console.error('[link]', e);
+      toast('Erro ao gerar link: ' + e.message, 4000);
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '🔗 Link da semana'; }
+  };
+
+  function semanaISO(d) {
+    const date = d ? new Date(d) : new Date();
+    date.setHours(0,0,0,0);
+    date.setDate(date.getDate() + 4 - (date.getDay() || 7));
+    const yearStart = new Date(date.getFullYear(), 0, 1);
+    const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+    return date.getFullYear() + '-S' + String(week).padStart(2, '0');
+  }
+
+  function proximaSegunda() {
+    const d = new Date();
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() + (8 - day));
+    d.setHours(23, 59, 59, 0);
+    return d.toISOString();
+  }
+
   Cloud.queueSave = () => {
     const u = Cloud.user;
     if (!u || Cloud.applying) return;
