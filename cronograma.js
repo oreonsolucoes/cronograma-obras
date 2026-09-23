@@ -67,7 +67,9 @@ let searchFilter = '';
 // ── Sprint 5: Theme ──
 function applyTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  $('#btn-theme').textContent = isDark ? '🌙' : '☀️';
+  const sun = $('#icon-theme-sun'); const moon = $('#icon-theme-moon');
+  if (sun) sun.style.display = isDark ? 'none' : '';
+  if (moon) moon.style.display = isDark ? '' : 'none';
 }
 
 
@@ -901,11 +903,11 @@ $('#btn-today').addEventListener('click', () => {
 // ── Views (handled by setView below) ──
 
 // ── Project name ──
-$('#supervisor-name').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
-$('#supervisor-name').addEventListener('change', () => {
-  state.supervisorName = $('#supervisor-name').value.trim();
-  save();
-});
+const supervisorEl = $('#supervisor-name');
+if (supervisorEl) {
+  supervisorEl.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+  supervisorEl.addEventListener('change', () => { state.supervisorName = supervisorEl.value.trim(); save(); });
+}
 
 projectNameEl.addEventListener('change', () => {
   state.projectName = projectNameEl.value.trim();
