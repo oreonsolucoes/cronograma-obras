@@ -764,6 +764,120 @@ function importJSON(file) {
   injectResizers();
 })();
 
+// ── Row Drag-to-Reorder ──
+(function() {
+  let dragRow = null, dragId = null, ghostEl = null, overRow = null;
+
+  function getRowById(id) {
+    return taskBodyEl.querySelector(`tr[data-id="${id}"]`);
+  }
+
+  function createGhost(tr, clientY) {
+    ghostEl = tr.cloneNode(true);
+    ghostEl.style.cssText = `
+      position:fixed; left:0; width:${tr.offsetWidth}px; z-index:9999;
+      opacity:0.85; pointer-events:none; background:var(--accent);
+      color:#fff; box-shadow:0 4px 16px rgba(0,0,0,.35);
+      top:${clientY - tr.offsetHeight/2}px;
+    `;
+    document.body.appendChild(ghostEl);
+  }
+
+  function moveGhost(clientY) {
+    if (ghostEl) ghostEl.style.top = (clientY - ghostEl.offsetHeight/2) + 'px';
+  }
+
+  function getRowAt(clientY) {
+    const rows = [...taskBodyEl.querySelectorAll('tr[data-id]')];
+    for (const r of rows) {
+      const rect = r.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) return r;
+    }
+    return null;
+  }
+
+  function clearDropIndicators() {
+    taskBodyEl.querySelectorAll('tr.drop-above, tr.drop-below').forEach(r => {
+      r.classList.remove('drop-above', 'drop-below');
+    });
+  }
+
+  function startRowDrag(tr, clientY) {
+    dragRow = tr;
+    dragId  = parseInt(tr.dataset.id);
+    tr.classList.add('row-dragging');
+    createGhost(tr, clientY);
+    document.body.style.userSelect = 'none';
+  }
+
+  function moveRowDrag(clientY) {
+    if (!dragRow) return;
+    moveGhost(clientY);
+    const target = getRowAt(clientY);
+    clearDropIndicators();
+    if (target && target !== dragRow) {
+      overRow = target;
+      const rect = target.getBoundingClientRect();
+      const mid  = rect.top + rect.height / 2;
+      target.classList.add(clientY < mid ? 'drop-above' : 'drop-below');
+    } else { overRow = null; }
+  }
+
+  function endRowDrag(clientY) {
+    if (!dragRow) return;
+    clearDropIndicators();
+    dragRow.classList.remove('row-dragging');
+    if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+    document.body.style.userSelect = '';
+
+    if (overRow && overRow !== dragRow) {
+      const targetId = parseInt(overRow.dataset.id);
+      const fromIdx  = state.tasks.findIndex(t => t.id === dragId);
+      const toIdx    = state.tasks.findIndex(t => t.id === targetId);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const rect = overRow.getBoundingClientRect();
+        const mid  = rect.top + rect.height / 2;
+        const insertAfter = clientY >= mid;
+        const [moved] = state.tasks.splice(fromIdx, 1);
+        const newIdx = state.tasks.findIndex(t => t.id === targetId);
+        state.tasks.splice(insertAfter ? newIdx + 1 : newIdx, 0, moved);
+        render();
+      }
+    }
+    dragRow = null; overRow = null; dragId = null;
+  }
+
+  // Delegação: mousedown / touchstart na célula de nome ou número (evita conflito com botões)
+  taskBodyEl.addEventListener('mousedown', e => {
+    const btn = e.target.closest('button');
+    if (btn) return;
+    const tr = e.target.closest('tr[data-id]');
+    if (!tr) return;
+    e.preventDefault();
+    startRowDrag(tr, e.clientY);
+  });
+
+  taskBodyEl.addEventListener('touchstart', e => {
+    const btn = e.target.closest('button');
+    if (btn) return;
+    const tr = e.target.closest('tr[data-id]');
+    if (!tr) return;
+    startRowDrag(tr, e.touches[0].clientY);
+  }, { passive: true });
+
+  document.addEventListener('mousemove', e => moveRowDrag(e.clientY));
+  document.addEventListener('mouseup',   e => endRowDrag(e.clientY));
+  document.addEventListener('touchmove', e => {
+    if (!dragRow) return;
+    e.preventDefault();
+    moveRowDrag(e.touches[0].clientY);
+  }, { passive: false });
+  document.addEventListener('touchend', e => {
+    if (!dragRow) return;
+    endRowDrag(e.changedTouches[0].clientY);
+  });
+})();
+
 // ── Zoom ──
 $('#zoom-in').addEventListener('click', () => { DAY_W = Math.min(80, DAY_W+6); renderGantt(); });
 $('#zoom-out').addEventListener('click', () => { DAY_W = Math.max(12, DAY_W-6); renderGantt(); });
