@@ -807,7 +807,7 @@ function importJSON(file) {
     dragId  = parseInt(tr.dataset.id);
     tr.classList.add('row-dragging');
     createGhost(tr, clientY);
-    document.body.style.userSelect = 'none';
+    document.body.classList.add('row-drag-active');
   }
 
   function moveRowDrag(clientY) {
@@ -828,7 +828,7 @@ function importJSON(file) {
     clearDropIndicators();
     dragRow.classList.remove('row-dragging');
     if (ghostEl) { ghostEl.remove(); ghostEl = null; }
-    document.body.style.userSelect = '';
+    document.body.classList.remove('row-drag-active');
 
     if (overRow && overRow !== dragRow) {
       const targetId = parseInt(overRow.dataset.id);
@@ -853,9 +853,12 @@ function importJSON(file) {
     if (btn) return;
     const tr = e.target.closest('tr[data-id]');
     if (!tr) return;
-    e.preventDefault();
+    e.preventDefault(); // evita seleção de texto
     startRowDrag(tr, e.clientY);
   });
+
+  // Impede seleção de texto durante drag em qualquer lugar do doc
+  document.addEventListener('selectstart', e => { if (dragRow) e.preventDefault(); });
 
   taskBodyEl.addEventListener('touchstart', e => {
     const btn = e.target.closest('button');
