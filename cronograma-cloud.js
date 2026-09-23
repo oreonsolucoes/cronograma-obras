@@ -49,29 +49,41 @@
 
   const toolbar = document.getElementById('toolbar');
   if (toolbar) {
+    // ── Grupo NAVEGAÇÃO inserido no ribbon ──
+    const navGroup = document.createElement('div'); navGroup.className = 'rib-group';
+    const navBtns = document.createElement('div'); navBtns.className = 'rib-btns';
+
     // Botão "Painel" — voltar à tela de obras
-    const sepP = document.createElement('div'); sepP.className = 'tsep';
     const bPainel = document.createElement('button');
-    bPainel.className = 'btn-t'; bPainel.id = 'btn-painel'; bPainel.title = 'Voltar ao painel de obras';
-    bPainel.innerHTML = '🏠 Painel';
+    bPainel.className = 'rib-btn rib-btn-sm'; bPainel.id = 'btn-painel'; bPainel.title = 'Voltar ao painel de obras';
+    bPainel.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Painel</span>';
     bPainel.addEventListener('click', () => { window.location.href = 'painel.html'; });
-    toolbar.appendChild(sepP); toolbar.appendChild(bPainel);
 
     // Botão "Gerar link da semana"
-    const sepL = document.createElement('div'); sepL.className = 'tsep';
     const bLink = document.createElement('button');
-    bLink.className = 'btn-t'; bLink.id = 'btn-gerar-link'; bLink.title = 'Gerar link semanal para a equipe preencher';
-    bLink.innerHTML = '🔗 Link da semana';
+    bLink.className = 'rib-btn rib-btn-sm'; bLink.id = 'btn-gerar-link'; bLink.title = 'Gerar link semanal para a equipe preencher';
+    bLink.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>Link Semana</span>';
     bLink.addEventListener('click', () => Cloud.gerarLinkSemanal && Cloud.gerarLinkSemanal());
-    toolbar.appendChild(sepL); toolbar.appendChild(bLink);
 
     // Botão Ajuda / Tour
-    const sep = document.createElement('div'); sep.className = 'tsep';
-    const b = document.createElement('button');
-    b.className = 'btn-t'; b.id = 'btn-tour'; b.title = 'Rever o tour guiado';
-    b.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" style="vertical-align:-2px"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M6.2 6.3a1.9 1.9 0 013.6.7c0 1.3-1.8 1.6-1.8 2.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.6" r=".8" fill="currentColor"/></svg> Ajuda';
-    b.addEventListener('click', () => Tour.start(true));
-    toolbar.appendChild(sep); toolbar.appendChild(b);
+    const bTour = document.createElement('button');
+    bTour.className = 'rib-btn rib-btn-sm'; bTour.id = 'btn-tour'; bTour.title = 'Rever o tour guiado';
+    bTour.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M6.2 6.3a1.9 1.9 0 013.6.7c0 1.3-1.8 1.6-1.8 2.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.6" r=".8" fill="currentColor"/></svg><span>Ajuda</span>';
+    bTour.addEventListener('click', () => Tour.start(true));
+
+    navBtns.appendChild(bPainel); navBtns.appendChild(bLink); navBtns.appendChild(bTour);
+    const navLabel = document.createElement('div'); navLabel.className = 'rib-label'; navLabel.textContent = 'NAVEGAÇÃO';
+    navGroup.appendChild(navBtns); navGroup.appendChild(navLabel);
+
+    // Inserir ANTES do separador flex (style="flex:1") para ficar antes do grupo SISTEMA
+    const flexSpacer = toolbar.querySelector('[style*="flex:1"]') || toolbar.querySelector('[style*="flex: 1"]');
+    const ribSep = document.createElement('div'); ribSep.className = 'rib-sep';
+    if (flexSpacer) {
+      toolbar.insertBefore(ribSep, flexSpacer);
+      toolbar.insertBefore(navGroup, flexSpacer);
+    } else {
+      toolbar.appendChild(ribSep); toolbar.appendChild(navGroup);
+    }
   }
 
   // ════════════════════════════════════════════════
@@ -312,7 +324,7 @@
     const sup = document.getElementById('supervisor-name'); if (sup) sup.value = state.supervisorName;
     selectedId = null;
     render();
-    if (typeof currentView !== 'undefined' && currentView === 'relatorio') renderRelatorios();
+    try { if (typeof currentView !== 'undefined' && currentView === 'relatorio') renderRelatorios(); } catch(e) {}
     Cloud.lastSynced = stable(payload());
     Cloud.applying = false;
   }
@@ -509,9 +521,8 @@
         enter() { ctx.name0 = state.projectName; setTimeout(() => projectNameEl.focus(), 300); },
         wait: () => !!state.projectName && state.projectName !== ctx.name0, done: 'Nome salvo. Ele aparece em todos os relatórios.' },
 
-      { key: 'resp', el: '#header-supervisor', title: 'Quem é o responsável?', text: 'Digite o nome do responsável técnico e tecle Enter. Ele sai no rodapé e na assinatura dos relatórios.',
-        enter() { ctx.sup0 = state.supervisorName; setTimeout(() => { const i = $q('#supervisor-name'); i && i.focus(); }, 300); },
-        wait: () => !!state.supervisorName && state.supervisorName !== ctx.sup0, skip: true, done: 'Anotado.' },
+      { key: 'resp', el: '#header-supervisor', title: 'Responsável preenchido automaticamente', text: 'O nome do supervisor já vem do seu login — não precisa digitar nada. Se quiser alterar, clique no campo e corrija. Ele aparece no rodapé de todos os relatórios.',
+        btn: 'Próximo' },
 
       { key: 'nova1', el: '#btn-new-task', title: 'Crie a primeira etapa', text: 'Clique em Nova Tarefa.', enter() { ctx.count = nTasks(); }, wait: modalOpen },
 
@@ -541,7 +552,7 @@
 
       { key: 'add2', el: '#modal-save', anchor: '#modal', title: 'Adicione', text: 'Clique em Adicionar.', needModal: true, back: 'nova2', wait: () => nTasks() > ctx.count },
 
-      { key: 'ver2', el: '#gantt-panel', place: 'left', title: 'O sistema encaixou a sequência', text: 'A segunda etapa foi posicionada logo depois do término da primeira, e a seta mostra a dependência. Se a primeira mudar de data, a segunda acompanha.', btn: 'Próximo' },
+      { key: 'ver2', el: '#gantt-panel', place: 'left', title: 'O sistema encaixou a sequência', text: 'A segunda etapa foi posicionada logo depois do término da primeira, e a seta mostra a dependência. Se você alterar a duração de uma etapa e clicar em Recalcular, as datas das sucessoras avançam ou retrocedem automaticamente.', btn: 'Próximo' },
 
       { key: 'edit', el: () => ctx.t1 && $q('#task-body tr[data-id="' + ctx.t1.id + '"]'), title: 'Atualize o andamento', text: 'Dê um duplo clique na primeira etapa para abrir a edição.', wait: () => modalOpen() && editingId !== null },
 
@@ -554,6 +565,12 @@
 
       { key: 'ver3', el: '#gantt-panel', place: 'left', title: 'O andamento aparece na barra', text: 'A parte escura da barra mostra o quanto foi executado. Quando chegar a 100%, a barra fica verde.', btn: 'Próximo' },
 
+      { key: 'drag-row', el: '#task-table tbody', title: 'Reordene as etapas arrastando', text: 'Clique e segure qualquer linha da tabela e arraste para cima ou para baixo para mudar a ordem. Uma linha azul indica onde a etapa vai cair. Funciona também no celular com toque.', btn: 'Próximo' },
+
+      { key: 'drag-col', el: '#task-table thead', title: 'Redimensione as colunas', text: 'Passe o mouse na borda direita de qualquer coluna do cabeçalho — o cursor muda para uma seta dupla. Arraste para ajustar a largura. No celular basta segurar e arrastar.', btn: 'Próximo' },
+
+      { key: 'splitter', el: '#splitter', title: 'Ajuste o espaço entre tabela e Gantt', text: 'Arraste esta divisória para dar mais espaço à tabela ou ao Gantt conforme sua preferência. Funciona com mouse e toque.', btn: 'Próximo' },
+
       { key: 'rel', el: '#view-relatorio', title: 'Relatório semanal', text: 'Clique em Rel. Semanal. É aqui que você registra a semana para enviar ao cliente.', wait: () => typeof currentView !== 'undefined' && currentView === 'relatorio', enter() { ctx.rels = state.relatorios.length; } },
 
       { key: 'semana', el: '#btn-rel-new', title: 'Abra a semana', text: 'Clique em Nova Semana. O período de segunda a domingo é preenchido sozinho.', wait: () => state.relatorios.length > ctx.rels },
@@ -563,10 +580,12 @@
 
       { key: 'obs', el: '#rel-list .rel-card textarea', title: 'Ocorrências', text: 'Se houve algo importante (chuva, falta de material, pedido do cliente), anote aqui. Se não houve, pode seguir.', btn: 'Próximo', enter() { setTimeout(() => { const t = $q('#rel-list .rel-card textarea'); t && t.focus(); }, 300); } },
 
+      { key: 'link', el: () => $q('#rel-list .rel-card [data-link-rel]') || $q('#btn-link-semana'), title: 'Link para a equipe', text: 'Clique em Link da Semana para gerar um link que a equipe técnica abre no celular. Eles preenchem o andamento de cada etapa e enviam fotos — sem precisar informar nome ou cargo.', btn: 'Próximo', skip: true },
+
       { key: 'pdf', el: '#rel-list .rel-card [data-pdf-rel]', title: 'Gere o PDF do cliente', text: 'Clique em Exportar PDF. Sai um resumo de uma página, pronto para mandar por e-mail ou WhatsApp. O botão Completo gera a versão detalhada.',
         enter() { ctx.pdf = false; const b = $q('#rel-list .rel-card [data-pdf-rel]'); b && b.addEventListener('click', () => { ctx.pdf = true; }, { once: true }); }, wait: () => ctx.pdf, skip: true },
 
-      { key: 'fim', title: 'Tudo pronto!', text: 'Você montou a obra, criou etapas ligadas entre si, atualizou o andamento e gerou o relatório da semana. Na rotina é só isso: atualizar o percentual das etapas e, no fim da semana, marcar o que foi feito e exportar o PDF. Para rever este guia, use o botão Ajuda.', btn: 'Concluir' },
+      { key: 'fim', title: 'Tudo pronto!', text: 'Você montou a obra, criou etapas ligadas entre si, atualizou o andamento e gerou o relatório da semana. Na rotina é só isso: atualizar os percentuais, reordenar etapas se precisar e, no fim da semana, gerar o link para a equipe preencher e exportar o PDF para o cliente. Para rever este guia, use o botão Ajuda.', btn: 'Concluir' },
     ];
     const idx = k => STEPS.findIndex(s => s.key === k);
 

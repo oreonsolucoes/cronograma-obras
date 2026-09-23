@@ -189,12 +189,13 @@ function toInput(iso) {
 }
 function addWorkDays(isoStart, days, holidaySet) {
   const d = new Date(isoStart);
+  d.setHours(8, 0, 0, 0); // garante início às 08:00 local
   let added = 0;
   while (added < days - 1) {
     d.setDate(d.getDate() + 1);
     if (!isWeekend(d) && !holidaySet.has(dateKey(d))) added++;
   }
-  d.setHours(17, 0, 0, 0);
+  d.setHours(17, 0, 0, 0); // fim às 17:00 local
   return d.toISOString();
 }
 
@@ -618,8 +619,13 @@ function saveModal() {
   const name  = $('#f-name').value.trim().toUpperCase();
   const typeVal = $('#f-type').value;
   const dur   = typeVal === 'marco' ? 0 : (parseInt($('#f-dur').value) || 1);
-  const start = $('#f-start').value ? new Date($('#f-start').value).toISOString() : null;
-  const end   = $('#f-end').value   ? new Date($('#f-end').value).toISOString()   : null;
+  function localToISO(val, hh, mm) {
+    if (!val) return null;
+    const d = new Date(val); if (isNaN(d)) return null;
+    d.setHours(hh, mm, 0, 0); return d.toISOString();
+  }
+  const start = localToISO($('#f-start').value, 8, 0);
+  const end   = localToISO($('#f-end').value, 17, 0);
   const notes = $('#f-notes').value.trim();
   const color = $('#f-color').value;
   const pct   = parseInt($('#f-pct').value) || 0;
@@ -889,7 +895,7 @@ $('#btn-today').addEventListener('click', () => {
   const minDate = new Date(Math.min(...starts)); minDate.setDate(minDate.getDate()-3); minDate.setHours(0,0,0,0);
   const today = new Date(); today.setHours(0,0,0,0);
   const diff = (today - minDate) / 864e5;
-  ganttBodyWrap.scrollLeft = diff * DAY_W - ganttBodyWrap.clientWidth/3;
+  if (ganttBodyWrap) ganttBodyWrap.scrollLeft = diff * DAY_W - ganttBodyWrap.clientWidth/3;
 });
 
 // ── Views (handled by setView below) ──
