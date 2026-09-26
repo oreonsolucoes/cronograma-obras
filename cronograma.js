@@ -2480,7 +2480,6 @@ function exportRelatorioClientePDF(rel) {
   doc.save(`Relatorio_${reportNo}_${safe}_${(rel.weekStart || '').replace(/-/g, '')}.pdf`);
   toast('📄 Relatório do cliente exportado!');
 }
-
 // ── Boot ──
 load();
 render();
