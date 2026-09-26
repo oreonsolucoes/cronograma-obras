@@ -67,9 +67,7 @@ let searchFilter = '';
 // ── Sprint 5: Theme ──
 function applyTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const sun = $('#icon-theme-sun'); const moon = $('#icon-theme-moon');
-  if (sun) sun.style.display = isDark ? 'none' : '';
-  if (moon) moon.style.display = isDark ? '' : 'none';
+  $('#btn-theme').textContent = isDark ? '🌙' : '☀️';
 }
 
 
@@ -903,11 +901,11 @@ $('#btn-today').addEventListener('click', () => {
 // ── Views (handled by setView below) ──
 
 // ── Project name ──
-const supervisorEl = $('#supervisor-name');
-if (supervisorEl) {
-  supervisorEl.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
-  supervisorEl.addEventListener('change', () => { state.supervisorName = supervisorEl.value.trim(); save(); });
-}
+$('#supervisor-name').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+$('#supervisor-name').addEventListener('change', () => {
+  state.supervisorName = $('#supervisor-name').value.trim();
+  save();
+});
 
 projectNameEl.addEventListener('change', () => {
   state.projectName = projectNameEl.value.trim();
@@ -1404,6 +1402,10 @@ function fmtDateBR(iso) {
 function renderRelatorios() {
   const listEl = $('#rel-list');
   const emptyEl = $('#rel-empty');
+
+  // ── Bloco de link + QR ──
+  renderLinkBox();
+
   if (!state.relatorios || !state.relatorios.length) {
     listEl.innerHTML = '';
     emptyEl.style.display = '';
@@ -1412,117 +1414,86 @@ function renderRelatorios() {
   emptyEl.style.display = 'none';
 
   // Sort newest first
-  const sorted = [...state.relatorios].sort((a,b) => b.weekStart.localeCompare(a.weekStart));
+  const sorted = [...state.relatorios].sort((a,b) => (b.weekStart||'').localeCompare(a.weekStart||''));
   listEl.innerHTML = sorted.map(rel => {
-    const checkedCount = Object.values(rel.taskChecks||{}).filter(Boolean).length;
-    const totalTasks = state.tasks.length;
-    const pct = totalTasks ? Math.round(checkedCount/totalTasks*100) : 0;
+    // Usar pctNovo de taskChecks (numérico) quando vier do prestador, senão boolean
+    const pctPorId = rel.taskChecks || {};
+    const temPct = Object.values(pctPorId).some(v => typeof v === 'number');
+
+    // Progresso geral: média ponderada dos percentuais ou contagem de checkmarks
+    let pctGeral = 0;
+    if (temPct) {
+      const vals = state.tasks.map(t => typeof pctPorId[t.id] === 'number' ? pctPorId[t.id] : 0);
+      pctGeral = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+    } else {
+      const checkedCount = Object.values(pctPorId).filter(Boolean).length;
+      pctGeral = state.tasks.length ? Math.round(checkedCount/state.tasks.length*100) : 0;
+    }
+
+    const respondente = rel.respondente || '';
+    const enviadoEm = rel.enviadoEm ? new Date(rel.enviadoEm).toLocaleString('pt-BR') : '';
+    const envioPrestador = !!rel.enviadoEm;
+
     const tasksHtml = state.tasks.map(t => {
-      const checked = rel.taskChecks && rel.taskChecks[t.id] ? 'checked' : '';
-      const pctTask = t.percentComplete || 0;
-      const statusColor = pctTask>=100 ? '#10b981' : pctTask>0 ? '#3b82f6' : '#94a3b8';
-      return `<label class="rel-task-item" style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:background 0.15s;">
-        <input type="checkbox" data-relid="${rel.id}" data-taskid="${t.id}" ${checked} style="width:16px;height:16px;accent-color:#2563eb;cursor:pointer;">
+      const val = pctPorId[t.id];
+      let pctTask, barColor;
+      if (typeof val === 'number') {
+        pctTask = val;
+      } else {
+        pctTask = val ? 100 : (t.percentComplete || 0);
+      }
+      barColor = pctTask >= 100 ? '#10b981' : pctTask > 0 ? '#3b82f6' : '#e2e8f0';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;">
         <span style="flex:1;font-size:13px;color:var(--text);">${t.name}</span>
-        <span style="font-size:11px;color:${statusColor};font-weight:600;white-space:nowrap;">${pctTask}% concluído</span>
-      </label>`;
+        <div style="width:80px;background:#e2e8f0;border-radius:20px;height:6px;flex-shrink:0;">
+          <div style="background:${barColor};width:${pctTask}%;height:100%;border-radius:20px;"></div>
+        </div>
+        <span style="font-size:11px;color:var(--text-2);font-weight:600;white-space:nowrap;min-width:36px;text-align:right;">${pctTask}%</span>
+      </div>`;
     }).join('');
+
+    const metaHtml = envioPrestador ? `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--accent-soft);border-radius:6px;font-size:11.5px;color:var(--text-2);">
+        ${respondente ? `<span>👷 <strong>${respondente}</strong></span>` : ''}
+        ${enviadoEm ? `<span>🕐 Enviado em ${enviadoEm}</span>` : ''}
+      </div>` : '';
+
+    const obsHtml = rel.observations ? `
+      <div style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--border-2);">
+        <p style="font-size:11.5px;color:var(--text-2);font-weight:600;margin:0 0 4px;">OBSERVAÇÕES:</p>
+        <p style="font-size:13px;color:var(--text);margin:0;">${rel.observations}</p>
+      </div>` : '';
 
     return `<div class="rel-card" data-relid="${rel.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--header-bg);color:var(--header-text);gap:12px;flex-wrap:wrap;">
-        <div>
-          <span style="font-size:13px;font-weight:700;">📅 Semana: ${fmtDateBR(rel.weekStart)} — ${fmtDateBR(rel.weekEnd)}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <span style="font-size:12px;background:rgba(255,255,255,0.15);padding:3px 10px;border-radius:20px;">${checkedCount} / ${totalTasks} tarefas concluídas esta semana</span>
-          <button class="btn btn-primary" data-pdf-rel="${rel.id}" style="font-size:12px;padding:5px 12px;" title="Resumo de uma página para enviar ao cliente">📄 Exportar PDF</button>
-          <button class="btn btn-ghost" data-pdf-full="${rel.id}" style="font-size:12px;padding:5px 12px;" title="Relatório detalhado com indicadores, curva S e tabela de atividades">📊 Completo</button>
-          <button class="btn btn-danger" data-del-rel="${rel.id}" style="font-size:12px;padding:5px 10px;background:var(--danger);border:none;color:#fff;border-radius:6px;cursor:pointer;">🗑</button>
+        <span style="font-size:13px;font-weight:700;">📅 Semana: ${fmtDateBR(rel.weekStart)} — ${fmtDateBR(rel.weekEnd)}</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" data-pdf-rel="${rel.id}" style="font-size:12px;padding:5px 12px;">📄 Exportar PDF</button>
+          <button class="btn btn-ghost" data-pdf-full="${rel.id}" style="font-size:12px;padding:5px 12px;">📊 Completo</button>
+          <button data-del-rel="${rel.id}" style="font-size:12px;padding:5px 10px;background:var(--danger,#dc2626);border:none;color:#fff;border-radius:6px;cursor:pointer;">🗑</button>
         </div>
       </div>
       <div style="padding:14px 18px;">
-        <div style="margin-bottom:10px;">
+        ${metaHtml}
+        <div style="margin-bottom:12px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-            <span style="font-size:12px;color:var(--text-2);font-weight:600;">PROGRESSO DA SEMANA</span>
-            <span style="font-size:12px;font-weight:700;color:var(--accent);">${pct}%</span>
+            <span style="font-size:12px;color:var(--text-2);font-weight:600;">PROGRESSO GERAL DA SEMANA</span>
+            <span style="font-size:12px;font-weight:700;color:var(--accent);">${pctGeral}%</span>
           </div>
           <div style="background:var(--border);border-radius:20px;height:8px;overflow:hidden;">
-            <div style="background:var(--accent);width:${pct}%;height:100%;border-radius:20px;transition:width 0.4s;"></div>
+            <div style="background:var(--accent);width:${pctGeral}%;height:100%;border-radius:20px;transition:width 0.4s;"></div>
           </div>
         </div>
-        <div style="margin-bottom:14px;max-height:280px;overflow-y:auto;">
-          <p style="font-size:11.5px;color:var(--text-2);margin-bottom:6px;font-weight:600;">TAREFAS REALIZADAS NESTA SEMANA:</p>
+        <div style="max-height:300px;overflow-y:auto;">
+          <p style="font-size:11.5px;color:var(--text-2);margin-bottom:4px;font-weight:600;">ANDAMENTO POR ETAPA:</p>
           <div style="display:flex;flex-direction:column;gap:2px;">${tasksHtml}</div>
         </div>
-        <div>
-          <label style="font-size:11.5px;color:var(--text-2);font-weight:600;display:block;margin-bottom:5px;">OBSERVAÇÕES / OCORRÊNCIAS:</label>
-          <textarea data-obs-rel="${rel.id}" rows="3" placeholder="Ex: Chuva forte impediu serviços externos na quinta-feira..." style="width:100%;padding:8px 10px;border:1px solid var(--border-2);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit;font-size:13px;resize:vertical;outline:none;">${rel.observations||''}</textarea>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
-          <label style="font-size:12px;color:var(--text-2);">Semana:</label>
-          <input type="date" data-ws-rel="${rel.id}" value="${rel.weekStart}" style="font-size:12px;padding:4px 8px;border:1px solid var(--border-2);border-radius:5px;background:var(--surface);color:var(--text);">
-          <span style="color:var(--text-3);">→</span>
-          <input type="date" data-we-rel="${rel.id}" value="${rel.weekEnd}" style="font-size:12px;padding:4px 8px;border:1px solid var(--border-2);border-radius:5px;background:var(--surface);color:var(--text);">
-          <button class="btn btn-primary" data-save-rel="${rel.id}" style="font-size:12px;padding:5px 12px;">💾 Salvar</button>
-        </div>
+        ${obsHtml}
       </div>
     </div>`;
   }).join('');
 
-  // Wire checkboxes
-  listEl.querySelectorAll('input[type=checkbox][data-relid]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const rel = state.relatorios.find(r => r.id == cb.dataset.relid);
-      if (!rel) return;
-      if (!rel.taskChecks) rel.taskChecks = {};
-      rel.taskChecks[cb.dataset.taskid] = cb.checked;
-      save();
-      // Update progress bar inline
-      const card = cb.closest('.rel-card');
-      if (card) {
-        const checks = Object.values(rel.taskChecks).filter(Boolean).length;
-        const tot = state.tasks.length;
-        const p = tot ? Math.round(checks/tot*100) : 0;
-        const bar = card.querySelector('[style*="background:var(--accent)"]');
-        if (bar) bar.style.width = p + '%';
-        const pctLabel = card.querySelector('[style*="color:var(--accent)"]');
-        if (pctLabel && pctLabel.tagName === 'SPAN') pctLabel.textContent = p + '%';
-        const countBadge = card.querySelector('[style*="rgba(255,255,255,0.15)"]');
-        if (countBadge) countBadge.textContent = `${checks} / ${tot} tarefas concluídas esta semana`;
-      }
-    });
-  });
-
-  // Wire observations save
-  listEl.querySelectorAll('textarea[data-obs-rel]').forEach(ta => {
-    ta.addEventListener('input', () => {
-      const rel = state.relatorios.find(r => r.id == ta.dataset.obsRel);
-      if (rel) { rel.observations = ta.value; save(); }
-    });
-  });
-
-  // Wire date inputs
-  listEl.querySelectorAll('input[data-ws-rel]').forEach(inp => {
-    inp.addEventListener('change', () => {
-      const rel = state.relatorios.find(r => r.id == inp.dataset.wsRel);
-      if (rel) { rel.weekStart = inp.value; save(); }
-    });
-  });
-  listEl.querySelectorAll('input[data-we-rel]').forEach(inp => {
-    inp.addEventListener('change', () => {
-      const rel = state.relatorios.find(r => r.id == inp.dataset.weRel);
-      if (rel) { rel.weekEnd = inp.value; save(); }
-    });
-  });
-
-  // Wire save buttons
-  listEl.querySelectorAll('[data-save-rel]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      save(); toast('💾 Relatório salvo!');
-    });
-  });
-
-  // Wire delete buttons
+  // Wire delete
   listEl.querySelectorAll('[data-del-rel]').forEach(btn => {
     btn.addEventListener('click', () => {
       if (!confirm('Excluir este relatório?')) return;
@@ -1532,7 +1503,7 @@ function renderRelatorios() {
     });
   });
 
-  // Wire PDF export buttons
+  // Wire PDF
   listEl.querySelectorAll('[data-pdf-rel]').forEach(btn => {
     btn.addEventListener('click', () => {
       const rel = state.relatorios.find(r => r.id == btn.dataset.pdfRel);
@@ -1546,6 +1517,50 @@ function renderRelatorios() {
     });
   });
 }
+
+// ── Bloco estático link + QR ──
+let _linkAtual = null;
+async function renderLinkBox() {
+  const box = $('#link-box');
+  if (!box) return;
+  // Buscar link no Firestore
+  try {
+    if (!Cloud || !Cloud.user) return;
+    const uid = Cloud.user.uid;
+    const snap = await firebase.firestore().collection('links')
+      .where('obraId', '==', OBRA_ID)
+      .where('ownerUid', '==', uid)
+      .limit(1).get();
+    if (snap.empty) { box.style.display = 'none'; return; }
+    const baseUrl = location.origin + location.pathname.replace(/[^/]*$/, '');
+    _linkAtual = baseUrl + 'preencher.html?t=' + snap.docs[0].id;
+    const urlEl = $('#link-url');
+    if (urlEl) { urlEl.href = _linkAtual; urlEl.textContent = _linkAtual; }
+    // QR code via API pública
+    const qrEl = $('#link-qr');
+    if (qrEl) {
+      qrEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(_linkAtual)}" width="90" height="90" style="border-radius:6px;border:1px solid var(--border);">`;
+    }
+    box.style.display = '';
+  } catch(e) { console.warn('[link-box]', e); }
+}
+
+window.copiarLink = function() {
+  if (!_linkAtual) return;
+  navigator.clipboard.writeText(_linkAtual).catch(() => {
+    const el = document.createElement('textarea');
+    el.value = _linkAtual; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+  });
+  toast('📋 Link copiado!', 2000);
+};
+
+window.enviarWpp = function() {
+  if (!_linkAtual) return;
+  const nome = (state && state.projectName) || 'Obra';
+  const msg = '🏗️ *Relatório Semanal — ' + nome + '*\n\nOlá equipe! Preencham o andamento pelo link:\n\n' + _linkAtual;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+};
 
 // ── Nova semana ──
 $('#btn-rel-new').addEventListener('click', () => {
