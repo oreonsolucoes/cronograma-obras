@@ -625,6 +625,54 @@
         semanaUltimoEnvio: semanaEnvio,
       });
 
+      // 4. Atualizar percentComplete das tasks e relatorios na obra
+      try {
+        const ownerUid = linkData.ownerUid;
+        const obraId   = linkData.obraId;
+        if (ownerUid && obraId) {
+          const obraRef = db.collection('users').doc(ownerUid)
+                           .collection('projetos').doc(obraId);
+          const obraSnap = await obraRef.get();
+          if (obraSnap.exists) {
+            const obraData = obraSnap.data().data || {};
+            // Atualizar percentComplete de cada task pelo id da etapa
+            const pctPorId = {};
+            etapas.forEach(e => { pctPorId[e.id] = e.pctNovo; });
+            const tasksAtualizadas = (obraData.tasks || []).map(t => {
+              if (pctPorId[t.id] !== undefined) return { ...t, percentComplete: pctPorId[t.id] };
+              return t;
+            });
+            // Montar relatorio da semana
+            const relatorios = obraData.relatorios || [];
+            const idxExistente = relatorios.findIndex(r => r.weekStart && semanaEnvio === semanaISO(new Date(r.weekStart)));
+            const hoje = new Date();
+            const seg = new Date(hoje); seg.setDate(hoje.getDate() - ((hoje.getDay()+6)%7));
+            const dom = new Date(seg); dom.setDate(seg.getDate() + 6);
+            const fmt = d => d.toISOString().slice(0,10);
+            const novoRel = {
+              id:           idxExistente >= 0 ? relatorios[idxExistente].id : (obraData.relNextId || 1),
+              weekStart:    fmt(seg),
+              weekEnd:      fmt(dom),
+              observations: obsGeral,
+              respondente:  nomeTecnico,
+              enviadoEm:    agora,
+              taskChecks:   pctPorId,
+              snapshot:     { takenAt: agora, pct: Object.fromEntries(etapas.map(e => [e.id, e.pctNovo])) },
+            };
+            const relatoriosAtualizados = idxExistente >= 0
+              ? relatorios.map((r,i) => i === idxExistente ? novoRel : r)
+              : [...relatorios, novoRel];
+            await obraRef.update({
+              'data.tasks':      tasksAtualizadas,
+              'data.relatorios': relatoriosAtualizados,
+              'data.relNextId':  idxExistente >= 0 ? (obraData.relNextId||1) : ((obraData.relNextId||1)+1),
+              updatedAt:         firebase.firestore.FieldValue.serverTimestamp(),
+              clientUpdatedAt:   Date.now(),
+            });
+          }
+        }
+      } catch (eObra) { console.warn('[preencher] erro ao atualizar obra:', eObra); }
+
       // G3 — Mostrar sucesso com mensagem diferenciada via função centralizada
       mostrarSucesso(urlsPorEtapa, semanaEnvio, temFotos);
 
