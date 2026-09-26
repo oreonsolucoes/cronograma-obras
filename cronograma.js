@@ -67,7 +67,9 @@ let searchFilter = '';
 // ── Sprint 5: Theme ──
 function applyTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  $('#btn-theme').textContent = isDark ? '🌙' : '☀️';
+  const sun = $('#icon-theme-sun'); const moon = $('#icon-theme-moon');
+  if (sun) sun.style.display = isDark ? 'none' : '';
+  if (moon) moon.style.display = isDark ? '' : 'none';
 }
 
 
@@ -901,11 +903,11 @@ $('#btn-today').addEventListener('click', () => {
 // ── Views (handled by setView below) ──
 
 // ── Project name ──
-$('#supervisor-name').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
-$('#supervisor-name').addEventListener('change', () => {
-  state.supervisorName = $('#supervisor-name').value.trim();
-  save();
-});
+const supervisorEl = $('#supervisor-name');
+if (supervisorEl) {
+  supervisorEl.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+  supervisorEl.addEventListener('change', () => { state.supervisorName = supervisorEl.value.trim(); save(); });
+}
 
 projectNameEl.addEventListener('change', () => {
   state.projectName = projectNameEl.value.trim();
@@ -1398,112 +1400,94 @@ function fmtDateBR(iso) {
   return `${d}/${m}/${y}`;
 }
 
-// ── Render relatório panel ──
+// ── Render relatório panel (somente leitura) ──
+let _linkAtual = null;
+
 function renderRelatorios() {
   const listEl = $('#rel-list');
   const emptyEl = $('#rel-empty');
-
-  // ── Bloco de link + QR ──
   renderLinkBox();
-
   if (!state.relatorios || !state.relatorios.length) {
     listEl.innerHTML = '';
-    emptyEl.style.display = '';
+    if (emptyEl) emptyEl.style.display = '';
     return;
   }
-  emptyEl.style.display = 'none';
+  if (emptyEl) emptyEl.style.display = 'none';
 
   // Sort newest first
   const sorted = [...state.relatorios].sort((a,b) => (b.weekStart||'').localeCompare(a.weekStart||''));
+
   listEl.innerHTML = sorted.map(rel => {
-    // Usar pctNovo de taskChecks (numérico) quando vier do prestador, senão boolean
-    const pctPorId = rel.taskChecks || {};
-    const temPct = Object.values(pctPorId).some(v => typeof v === 'number');
-
-    // Progresso geral: média ponderada dos percentuais ou contagem de checkmarks
-    let pctGeral = 0;
-    if (temPct) {
-      const vals = state.tasks.map(t => typeof pctPorId[t.id] === 'number' ? pctPorId[t.id] : 0);
-      pctGeral = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
-    } else {
-      const checkedCount = Object.values(pctPorId).filter(Boolean).length;
-      pctGeral = state.tasks.length ? Math.round(checkedCount/state.tasks.length*100) : 0;
-    }
-
-    const respondente = rel.respondente || '';
-    const enviadoEm = rel.enviadoEm ? new Date(rel.enviadoEm).toLocaleString('pt-BR') : '';
-    const envioPrestador = !!rel.enviadoEm;
-
+    // taskChecks pode ser {id: boolean} (manual antigo) ou {id: number} (pctNovo do prestador)
+    const checks = rel.taskChecks || {};
     const tasksHtml = state.tasks.map(t => {
-      const val = pctPorId[t.id];
-      let pctTask, barColor;
-      if (typeof val === 'number') {
-        pctTask = val;
-      } else {
-        pctTask = val ? 100 : (t.percentComplete || 0);
-      }
-      barColor = pctTask >= 100 ? '#10b981' : pctTask > 0 ? '#3b82f6' : '#e2e8f0';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;">
+      const val = checks[t.id];
+      let pct = 0;
+      if (typeof val === 'number') pct = Math.round(val);
+      else if (val === true) pct = 100;
+      else pct = t.percentComplete || 0;
+      const cor = pct >= 100 ? '#10b981' : pct > 0 ? '#3b82f6' : '#94a3b8';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;">
         <span style="flex:1;font-size:13px;color:var(--text);">${t.name}</span>
-        <div style="width:80px;background:#e2e8f0;border-radius:20px;height:6px;flex-shrink:0;">
-          <div style="background:${barColor};width:${pctTask}%;height:100%;border-radius:20px;"></div>
+        <span style="font-size:11px;color:${cor};font-weight:700;white-space:nowrap;min-width:40px;text-align:right;">${pct}%</span>
+        <div style="width:80px;background:var(--border);border-radius:20px;height:6px;overflow:hidden;flex-shrink:0;">
+          <div style="background:${cor};width:${pct}%;height:100%;border-radius:20px;"></div>
         </div>
-        <span style="font-size:11px;color:var(--text-2);font-weight:600;white-space:nowrap;min-width:36px;text-align:right;">${pctTask}%</span>
       </div>`;
     }).join('');
 
-    const metaHtml = envioPrestador ? `
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--accent-soft);border-radius:6px;font-size:11.5px;color:var(--text-2);">
-        ${respondente ? `<span>👷 <strong>${respondente}</strong></span>` : ''}
-        ${enviadoEm ? `<span>🕐 Enviado em ${enviadoEm}</span>` : ''}
-      </div>` : '';
+    // Progresso geral: média dos valores do relatório
+    const vals = state.tasks.map(t => {
+      const v = checks[t.id];
+      if (typeof v === 'number') return v;
+      if (v === true) return 100;
+      return t.percentComplete || 0;
+    });
+    const pctGeral = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+    const corGeral = pctGeral >= 100 ? '#10b981' : pctGeral > 0 ? '#3b82f6' : '#94a3b8';
 
-    const obsHtml = rel.observations ? `
-      <div style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--border-2);">
-        <p style="font-size:11.5px;color:var(--text-2);font-weight:600;margin:0 0 4px;">OBSERVAÇÕES:</p>
-        <p style="font-size:13px;color:var(--text);margin:0;">${rel.observations}</p>
-      </div>` : '';
+    // Badge do prestador
+    let badgePrestador = '';
+    if (rel.respondente || rel.enviadoEm) {
+      const quem = rel.respondente || 'Equipe técnica';
+      const quando = rel.enviadoEm ? new Date(rel.enviadoEm).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      badgePrestador = `<div style="font-size:11px;color:var(--text-3);margin-top:4px;">🧑‍🔧 ${quem}${quando ? ' · ' + quando : ''}</div>`;
+    }
 
-    return `<div class="rel-card" data-relid="${rel.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
+    return `<div class="rel-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--header-bg);color:var(--header-text);gap:12px;flex-wrap:wrap;">
-        <span style="font-size:13px;font-weight:700;">📅 Semana: ${fmtDateBR(rel.weekStart)} — ${fmtDateBR(rel.weekEnd)}</span>
+        <div>
+          <span style="font-size:13px;font-weight:700;">📅 Semana: ${fmtDateBR(rel.weekStart)} — ${fmtDateBR(rel.weekEnd)}</span>
+          ${badgePrestador}
+        </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-primary" data-pdf-rel="${rel.id}" style="font-size:12px;padding:5px 12px;">📄 Exportar PDF</button>
           <button class="btn btn-ghost" data-pdf-full="${rel.id}" style="font-size:12px;padding:5px 12px;">📊 Completo</button>
-          <button data-del-rel="${rel.id}" style="font-size:12px;padding:5px 10px;background:var(--danger,#dc2626);border:none;color:#fff;border-radius:6px;cursor:pointer;">🗑</button>
         </div>
       </div>
       <div style="padding:14px 18px;">
-        ${metaHtml}
         <div style="margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-            <span style="font-size:12px;color:var(--text-2);font-weight:600;">PROGRESSO GERAL DA SEMANA</span>
-            <span style="font-size:12px;font-weight:700;color:var(--accent);">${pctGeral}%</span>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+            <span style="font-size:11.5px;color:var(--text-2);font-weight:600;letter-spacing:.04em;">PROGRESSO GERAL</span>
+            <span style="font-size:12px;font-weight:700;color:${corGeral};">${pctGeral}%</span>
           </div>
           <div style="background:var(--border);border-radius:20px;height:8px;overflow:hidden;">
-            <div style="background:var(--accent);width:${pctGeral}%;height:100%;border-radius:20px;transition:width 0.4s;"></div>
+            <div style="background:${corGeral};width:${pctGeral}%;height:100%;border-radius:20px;transition:width .4s;"></div>
           </div>
         </div>
-        <div style="max-height:300px;overflow-y:auto;">
-          <p style="font-size:11.5px;color:var(--text-2);margin-bottom:4px;font-weight:600;">ANDAMENTO POR ETAPA:</p>
+        <div style="margin-bottom:14px;">
+          <p style="font-size:11.5px;color:var(--text-2);margin-bottom:4px;font-weight:600;letter-spacing:.04em;">PROGRESSO POR ETAPA:</p>
           <div style="display:flex;flex-direction:column;gap:2px;">${tasksHtml}</div>
         </div>
-        ${obsHtml}
+        ${rel.observations ? `<div style="background:var(--bg);border-left:3px solid var(--border-2);border-radius:0 6px 6px 0;padding:10px 14px;">
+          <p style="font-size:11px;color:var(--text-3);font-weight:600;margin:0 0 4px;letter-spacing:.04em;">OBSERVAÇÕES</p>
+          <p style="font-size:13px;color:var(--text);margin:0;white-space:pre-wrap;">${rel.observations}</p>
+        </div>` : ''}
       </div>
     </div>`;
   }).join('');
 
-  // Wire delete
-  listEl.querySelectorAll('[data-del-rel]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (!confirm('Excluir este relatório?')) return;
-      state.relatorios = state.relatorios.filter(r => r.id != btn.dataset.delRel);
-      save(); renderRelatorios();
-      toast('🗑 Relatório excluído.');
-    });
-  });
-
-  // Wire PDF
+  // Wire PDF export buttons
   listEl.querySelectorAll('[data-pdf-rel]').forEach(btn => {
     btn.addEventListener('click', () => {
       const rel = state.relatorios.find(r => r.id == btn.dataset.pdfRel);
@@ -1518,14 +1502,12 @@ function renderRelatorios() {
   });
 }
 
-// ── Bloco estático link + QR ──
-let _linkAtual = null;
+// ── Link box (QR + link clicável) ──
 async function renderLinkBox() {
   const box = $('#link-box');
   if (!box) return;
-  // Buscar link no Firestore
   try {
-    if (!Cloud || !Cloud.user) return;
+    if (!window.Cloud || !Cloud.user) return;
     const uid = Cloud.user.uid;
     const snap = await firebase.firestore().collection('links')
       .where('obraId', '==', OBRA_ID)
@@ -1536,10 +1518,9 @@ async function renderLinkBox() {
     _linkAtual = baseUrl + 'preencher.html?t=' + snap.docs[0].id;
     const urlEl = $('#link-url');
     if (urlEl) { urlEl.href = _linkAtual; urlEl.textContent = _linkAtual; }
-    // QR code via API pública
     const qrEl = $('#link-qr');
     if (qrEl) {
-      qrEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(_linkAtual)}" width="90" height="90" style="border-radius:6px;border:1px solid var(--border);">`;
+      qrEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(_linkAtual)}" width="90" height="90" style="border-radius:6px;border:1px solid var(--border);display:block;">`;
     }
     box.style.display = '';
   } catch(e) { console.warn('[link-box]', e); }
@@ -1547,35 +1528,19 @@ async function renderLinkBox() {
 
 window.copiarLink = function() {
   if (!_linkAtual) return;
-  navigator.clipboard.writeText(_linkAtual).catch(() => {
-    const el = document.createElement('textarea');
-    el.value = _linkAtual; document.body.appendChild(el); el.select();
-    document.execCommand('copy'); document.body.removeChild(el);
+  navigator.clipboard.writeText(_linkAtual).then(() => toast('📋 Link copiado!')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = _linkAtual; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    toast('📋 Link copiado!');
   });
-  toast('📋 Link copiado!', 2000);
 };
 
 window.enviarWpp = function() {
   if (!_linkAtual) return;
-  const nome = (state && state.projectName) || 'Obra';
-  const msg = '🏗️ *Relatório Semanal — ' + nome + '*\n\nOlá equipe! Preencham o andamento pelo link:\n\n' + _linkAtual;
+  const obra = $('#project-name') ? $('#project-name').value : 'Obra';
+  const msg = `📋 *Relatório semanal — ${obra}*\nPreencha aqui: ${_linkAtual}`;
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 };
-
-// ── Nova semana ──
-$('#btn-rel-new').addEventListener('click', () => {
-  const today = new Date();
-  const mon = getMondayOfWeek(today);
-  const sun = getSundayOfWeek(today);
-  const id = state.relNextId++;
-  if (!state.relatorios) state.relatorios = [];
-  state.relatorios.push({
-    id, weekStart: toDateInput(mon), weekEnd: toDateInput(sun),
-    observations: '', taskChecks: {}
-  });
-  save(); renderRelatorios();
-  toast('📅 Nova semana adicionada!');
-});
 
 // ── Export Relatório PDF (painel executivo navegável) ──
 function exportRelatorioPDF(rel) {
@@ -2495,6 +2460,7 @@ function exportRelatorioClientePDF(rel) {
   doc.save(`Relatorio_${reportNo}_${safe}_${(rel.weekStart || '').replace(/-/g, '')}.pdf`);
   toast('📄 Relatório do cliente exportado!');
 }
+
 // ── Boot ──
 load();
 render();
