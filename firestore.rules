@@ -2,6 +2,13 @@ rules_version = '2';
 // ═══════════════════════════════════════════════════════════
 //  Oreon Cronograma — Regras de segurança do Firestore
 // ═══════════════════════════════════════════════════════════
+//
+//  Estrutura de dados:
+//   users/{uid}                          → perfil do usuário
+//   users/{uid}/projetos/{obraId}        → cronograma de cada obra
+//   links/{token}                        → links permanentes de preenchimento
+//
+// ═══════════════════════════════════════════════════════════
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -12,28 +19,32 @@ service cloud.firestore {
       // Subcoleções de obras
       match /projetos/{obraId} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
-
-        // Equipe sem login pode gravar APENAS campos de envio semanal
-        allow update: if (
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['semanaUltimoEnvio', 'enviosSemana'])
-        );
       }
     }
 
-    // ── Links semanais de preenchimento (sem login) ─────────
+    // ── Links permanentes de preenchimento (sem login) ──────
+    //
+    //  Leitura pública: qualquer um com o token pode ver os dados da obra
+    //  Gravação pública: qualquer um com o token pode registrar um envio
+    //    - Só pode atualizar campos permitidos (envios, usado, semanaUltimoEnvio)
+    //    - Não pode criar novos tokens nem apagar existentes
+    //
     match /links/{token} {
+      // Leitura: qualquer pessoa com o link pode ver
       allow read: if true;
+
+      // Criação e deleção: somente dono autenticado
       allow create: if request.auth != null;
       allow delete: if request.auth != null &&
                        request.auth.uid == resource.data.ownerUid;
+
+      // Atualização: dono pode tudo; equipe (sem login) só pode gravar envio
       allow update: if (
+        // Dono autenticado pode atualizar qualquer campo
         (request.auth != null && request.auth.uid == resource.data.ownerUid) ||
-        (
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['envios', 'usado']) &&
-          resource.data.expiresAt > request.time
-        )
+        // Equipe (sem login) só pode atualizar os campos de envio
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['envios', 'usado', 'semanaUltimoEnvio'])
       );
     }
   }

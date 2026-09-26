@@ -322,44 +322,51 @@
   Cloud.gerarLinkSemanal = async function() {
     if (!Cloud.user) { toast('Faça login primeiro.', 2500); return; }
     const uid = Cloud.user.uid;
-    const semana = semanaISO();
     const tasks = state.tasks || [];
 
     const btn = document.getElementById('btn-gerar-link');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando...'; }
+    if (btn) { btn.disabled = true; btn.querySelector('span') ? btn.querySelector('span').textContent = '⏳ Gerando...' : (btn.textContent = '⏳ Gerando...'); }
 
     try {
-      // Verificar se já existe link para esta obra/semana
+      // Link permanente por obra — um único link, sem expiração
       const existing = await linksRef()
         .where('obraId', '==', OBRA_ID)
         .where('ownerUid', '==', uid)
-        .where('semana', '==', semana)
         .get();
+
+      const etapasAtual = tasks.map(t => ({
+        id: t.id,
+        nome: t.name,
+        percentComplete: t.percentComplete || 0,
+        responsavel: t.responsavel || '',
+        start: t.start || null,
+        end: t.end || null,
+      }));
 
       let token;
       if (!existing.empty) {
+        // Já existe — reutiliza e atualiza etapas com estado atual
         token = existing.docs[0].id;
+        await linksRef().doc(token).update({
+          etapas: etapasAtual,
+          obraNome: state.projectName || 'Obra',
+          supervisorName: state.supervisorName || '',
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        });
       } else {
+        // Cria link permanente (sem expiresAt, sem semana fixa)
         token = uid.substring(0, 4) + Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
         await linksRef().doc(token).set({
           obraId: OBRA_ID,
           ownerUid: uid,
-          semana,
           obraNome: state.projectName || 'Obra',
           cliente: '',
           supervisorName: state.supervisorName || '',
-          etapas: tasks.map(t => ({
-            id: t.id,
-            nome: t.name,
-            percentComplete: t.percentComplete || 0,
-            responsavel: t.responsavel || '',
-            start: t.start || null,
-            end: t.end || null,
-          })),
+          etapas: etapasAtual,
           criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-          expiresAt: proximaSegunda(),
           usado: false,
           envios: [],
+          semanaUltimoEnvio: null,
         });
       }
 
@@ -376,18 +383,22 @@
       }
 
       const obraNome = state.projectName || 'Obra';
-      const msg = '🏗️ *Relatório Semanal — ' + obraNome + '*\n\nOlá equipe! Por favor preencham o andamento desta semana pelo link:\n\n' + link + '\n\n_Link válido apenas para esta semana._';
+      const msg = '🏗️ *Relatório Semanal — ' + obraNome + '*\n\nOlá equipe! Por favor preencham o andamento desta semana pelo link:\n\n' + link;
       const wpUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
 
       if (confirm('Link copiado! 📋\n\n' + link + '\n\nDeseja abrir o WhatsApp Web para enviar à equipe?')) {
         window.open(wpUrl, '_blank');
       }
-      toast('Link da semana copiado!', 3000);
+      toast('Link copiado!', 3000);
     } catch (e) {
       console.error('[link]', e);
       toast('Erro ao gerar link: ' + e.message, 4000);
     }
-    if (btn) { btn.disabled = false; btn.textContent = '🔗 Link da semana'; }
+    if (btn) {
+      btn.disabled = false;
+      const sp = btn.querySelector('span');
+      if (sp) sp.textContent = 'Link Semana'; else btn.innerHTML = btn.innerHTML;
+    }
   };
 
   function semanaISO(d) {

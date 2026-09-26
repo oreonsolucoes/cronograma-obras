@@ -234,6 +234,24 @@
     return fmt(seg) + ' a ' + fmt(dom);
   }
 
+  function semanaISO(d) {
+    const date = d ? new Date(d) : new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 4 - (date.getDay() || 7));
+    const yearStart = new Date(date.getFullYear(), 0, 1);
+    const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+    return date.getFullYear() + '-S' + String(week).padStart(2, '0');
+  }
+
+  function proximaSegunda() {
+    const d = new Date();
+    const dow = d.getDay();
+    const daysUntilMon = dow === 1 ? 7 : (8 - dow) % 7 || 7;
+    d.setDate(d.getDate() + daysUntilMon);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
   async function carregarLink() {
     try {
       const snap = await db.collection('links').doc(token).get();
@@ -242,20 +260,21 @@
       }
       linkData = snap.data();
 
-      // Checar validade
-      if (linkData.expiresAt) {
-        const exp = new Date(linkData.expiresAt);
-        if (exp < new Date()) {
-          mostrarErro('Link expirado', 'Este link era válido somente até ' + exp.toLocaleDateString('pt-BR') + '. Solicite um novo link ao responsável.'); return;
-        }
+      // Checar se já foi enviado nesta semana ISO
+      const semanaAtual = semanaISO();
+      if (linkData.semanaUltimoEnvio === semanaAtual) {
+        const proxSeg = proximaSegunda();
+        mostrarErro(
+          'Já enviado esta semana ✅',
+          'O relatório desta semana já foi preenchido. O formulário abre novamente na segunda-feira da semana que vem.',
+          'Semana bloqueada: ' + semanaAtual + '. Próxima abertura: ' + proxSeg.toLocaleDateString('pt-BR')
+        );
+        return;
       }
-
-      // Checar se já foi submetido (para este token exato — permite múltiplos envios de membros diferentes)
-      // Não bloqueamos: cada membro pode enviar, o relatório acumula envios.
 
       // Preencher tela
       document.getElementById('obra-nome-display').textContent = linkData.obraNome || 'Obra';
-      document.getElementById('semana-display').textContent = semanaLabel(linkData.semana);
+      document.getElementById('semana-display').textContent = semanaLabel(semanaAtual);
       if (linkData.cliente) {
         document.getElementById('cliente-display').textContent = linkData.cliente;
         document.getElementById('cliente-display-wrap').style.display = '';
@@ -459,8 +478,6 @@
   }
 
   window.enviarRelatorio = async function() {
-    const nomeResponde = 'equipe';
-
     const btn = document.getElementById('btn-enviar');
     btn.disabled = true;
 
@@ -474,7 +491,7 @@
         btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Enviando...';
       }
 
-      const urlsPorEtapa = await uploadFotosParaDrive(nomeResponde);
+      const urlsPorEtapa = await uploadFotosParaDrive('equipe');
 
       // 2. Montar dados das etapas (sem base64 — só URLs do Drive)
       btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Salvando relatório...';
@@ -494,41 +511,28 @@
 
       const agora = new Date().toISOString();
 
-      // 3. Gravar no documento do link (envios acumulados)
+      const obsGeral = document.getElementById('obs-geral').value.trim();
+
+      // 3. Gravar no documento do link (envios acumulados + lock da semana)
+      const semanaEnvio = semanaISO();
       await db.collection('links').doc(token).update({
         envios: firebase.firestore.FieldValue.arrayUnion({
-          obsGeral:  document.getElementById('obs-geral').value.trim(),
+          obsGeral,
           etapas,
           enviadoEm: agora,
-          semana:    linkData.semana,
+          semana:    semanaEnvio,
           obraId:    linkData.obraId,
         }),
         usado: true,
-      });
-
-      // 4. Gravar no cronograma da obra (supervisor verá ao gerar PDF)
-      const obraRef = db.collection('users').doc(linkData.ownerUid)
-                        .collection('projetos').doc(linkData.obraId);
-      await obraRef.update({
-        semanaUltimoEnvio: linkData.semana,
-        [`enviosSemana.${linkData.semana}`]: firebase.firestore.FieldValue.arrayUnion({
-          token,
-          obsGeral:  document.getElementById('obs-geral').value.trim(),
-          etapas:    etapas.map(e => ({
-            id: e.id, nome: e.nome,
-            pctNovo: e.pctNovo, obs: e.obs,
-            qtdFotos: e.qtdFotos, fotosDrive: e.fotosDrive,
-          })),
-          enviadoEm: agora,
-        }),
+        semanaUltimoEnvio: semanaEnvio,
       });
 
       document.getElementById('tela-form').style.display = 'none';
       document.getElementById('tela-sucesso').style.display = '';
 
-      let succMsg = 'Informações registradas com sucesso para a semana de ' + semanaLabel(linkData.semana) + '.';
+      let succMsg = 'Relatório enviado com sucesso para a semana de ' + semanaLabel(semanaEnvio) + '!';
       if (temFotos && urlsPorEtapa._semUrls) {
-        succMsg += ' As fotos foram enviadas ao Google Drive (o link será gerado em instantes).';
+        succMsg += ' As fotos foram enviadas ao Google Drive.';
       } else if (temFotos && !APPS_SCRIPT_URL) {
         succMsg += ' Atenção: as fotos não foram enviadas pois o Apps Script ainda não está configurado.';
       }
@@ -541,21 +545,6 @@
       btn.innerHTML = '<svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Enviar Relatório';
     }
   };
-
-  function semanaLabel(semanaISO) {
-    if (!semanaISO) return semanaISO;
-    const [ano, s] = semanaISO.split('-S');
-    const semNum = parseInt(s);
-    const jan4 = new Date(parseInt(ano), 0, 4);
-    const startOfWeek1 = new Date(jan4);
-    startOfWeek1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
-    const seg = new Date(startOfWeek1);
-    seg.setDate(seg.getDate() + (semNum - 1) * 7);
-    const dom = new Date(seg);
-    dom.setDate(dom.getDate() + 6);
-    const fmt = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    return fmt(seg) + ' a ' + fmt(dom);
-  }
 
   carregarLink();
 })();
