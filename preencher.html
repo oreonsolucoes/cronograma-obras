@@ -439,7 +439,7 @@
     const payload = {
       obraId:      linkData.obraId,
       obraNome:    linkData.obraNome || linkData.obraId,
-      semana:      linkData.semana,
+      semana:      semanaISO(),
       respondente: nomeResponde,
       etapas:      etapasComFotos,
     };

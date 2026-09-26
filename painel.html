@@ -858,42 +858,47 @@
   window.gerarLink = async function(id) {
     const obra = obras.find(o => o.id === id);
     if (!obra) return;
-    const semana = semanaAtual();
     const uid = currentUser.uid;
 
-    // Verificar se já existe link para esta obra/semana
+    // Verificar se já existe link para esta obra
     try {
       const existing = await linksRef()
         .where('obraId', '==', id)
         .where('ownerUid', '==', uid)
-        .where('semana', '==', semana)
         .get();
 
       let token;
+      const tasks = (obra.data && obra.data.tasks) || [];
+      const etapas = tasks.map(t => ({
+        id: t.id,
+        nome: t.name,
+        percentComplete: t.percentComplete || 0,
+        responsavel: t.responsavel || '',
+        start: t.start || null,
+        end: t.end || null,
+      }));
+
       if (!existing.empty) {
         token = existing.docs[0].id;
-        toast('Link desta semana já existe — copiado!');
+        await linksRef().doc(token).update({
+          etapas,
+          obraNome: obra.nome,
+          supervisorName: (obra.data && obra.data.supervisorName) || '',
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        toast('Link já existe — atualizado e copiado!');
       } else {
         // Gerar token único
         token = uid.substring(0, 4) + Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
-        const tasks = (obra.data && obra.data.tasks) || [];
         await linksRef().doc(token).set({
           obraId: id,
           ownerUid: uid,
-          semana,
           obraNome: obra.nome,
           cliente: obra.cliente || '',
           supervisorName: (obra.data && obra.data.supervisorName) || '',
-          etapas: tasks.map(t => ({
-            id: t.id,
-            nome: t.name,
-            percentComplete: t.percentComplete || 0,
-            responsavel: t.responsavel || '',
-            start: t.start || null,
-            end: t.end || null,
-          })),
+          etapas,
           criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-          expiresAt: proximaSegunda(),
+          semanaUltimoEnvio: null,
           usado: false,
           envios: [],
         });
@@ -914,7 +919,7 @@
       }
 
       // Mensagem para WhatsApp
-      const msg = '🏗️ *Relatório Semanal — ' + obra.nome + '*\n\nOlá equipe! Já é sexta, por favor preencham o andamento desta semana pelo link abaixo:\n\n' + link + '\n\n_O link é válido apenas para esta semana._';
+      const msg = '🏗️ *Relatório Semanal — ' + obra.nome + '*\n\nOlá equipe! Por favor preencham o andamento pelo link abaixo:\n\n' + link;
       const wpUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
 
       if (confirm('Link copiado! 📋\n\n' + link + '\n\nDeseja abrir o WhatsApp Web para enviar?')) {
