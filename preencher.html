@@ -46,6 +46,16 @@
     .field input, .field textarea, .field select { border: 1px solid var(--border2); border-radius: 7px; padding: 9px 12px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border .15s, box-shadow .15s; }
     .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
 
+    /* G6 — Campo nome do técnico */
+    .campo-tecnico { margin: 0 0 20px; }
+    .campo-tecnico label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px; }
+    .campo-tecnico input {
+      width: 100%; box-sizing: border-box;
+      background: #1e2130; border: 1px solid #334155; color: #e2e8f0;
+      border-radius: 8px; padding: 10px 14px; font-size: 0.95rem;
+    }
+    .campo-tecnico input:focus { outline: none; border-color: #3b82f6; }
+
     /* ── ETAPAS ── */
     .etapa-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
     .etapa-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
@@ -60,6 +70,9 @@
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
     input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 2px solid #fff; }
 
+    /* M3 — hint do slider */
+    .hint-slider { font-size: 0.75rem; color: #64748b; margin: 2px 0 8px; }
+
     .obs-wrap .field textarea { width: 100%; resize: vertical; min-height: 70px; }
 
     /* ── FOTOS ── */
@@ -72,6 +85,9 @@
     .foto-add-btn svg { width: 20px; height: 20px; }
     .foto-remove { position: relative; }
     .foto-remove::after { content: '✕'; position: absolute; top: -4px; right: -4px; background: var(--red); color: #fff; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit; line-height: 1; }
+
+    /* S5 — contador de fotos */
+    .contador-fotos { font-size: 0.75rem; color: #64748b; margin: 4px 0 0; text-align: right; }
 
     /* ── OBS GERAL ── */
     .obs-geral-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
@@ -92,6 +108,15 @@
     .tela-sub { font-size: 14px; color: var(--text3); max-width: 380px; line-height: 1.5; }
     .tela-err-detalhe { font-size: 12px; color: var(--red); background: var(--red-soft); padding: 8px 14px; border-radius: 7px; max-width: 400px; }
     .tela-succ-sub { color: var(--text2); }
+
+    /* M6 — tela de bloqueio (semana já enviada) */
+    #tela-bloqueio {
+      display: none; text-align: center; padding: 48px 24px;
+    }
+    #tela-bloqueio .bloq-icon { font-size: 3.5rem; margin-bottom: 16px; }
+    #tela-bloqueio h2 { font-size: 1.3rem; color: #34d399; margin: 0 0 10px; }
+    #tela-bloqueio p  { color: #94a3b8; font-size: 0.9rem; line-height: 1.5; }
+    #tela-bloqueio .bloq-detalhe { font-size: 0.8rem; color: #475569; margin-top: 12px; }
 
     /* ── TOAST ── */
     #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #f1f5f9; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 9999; pointer-events: none; opacity: 0; transition: opacity .3s; white-space: nowrap; }
@@ -117,15 +142,23 @@
 
 <!-- ERRO -->
 <div id="tela-erro" style="display:none">
-  <div class="tela-icon">⚠️</div>
+  <div class="tela-icon">&#9888;&#65039;</div>
   <div class="tela-titulo" id="err-titulo">Link inválido</div>
   <div class="tela-sub" id="err-sub">Este link não existe ou já foi utilizado.</div>
   <div class="tela-err-detalhe" id="err-detalhe" style="display:none"></div>
 </div>
 
+<!-- M6 — BLOQUEIO (semana já enviada — não usa tela de erro) -->
+<div id="tela-bloqueio">
+  <div class="bloq-icon">&#9989;</div>
+  <h2>Relatório já enviado</h2>
+  <p>O relatório desta semana já foi preenchido.<br>O formulário abrirá novamente na próxima segunda-feira.</p>
+  <p class="bloq-detalhe" id="bloq-detalhe-texto"></p>
+</div>
+
 <!-- SUCESSO -->
 <div id="tela-sucesso" style="display:none">
-  <div class="tela-icon">✅</div>
+  <div class="tela-icon">&#9989;</div>
   <div class="tela-titulo">Relatório enviado!</div>
   <div class="tela-sub tela-succ-sub" id="succ-sub">Obrigado! As informações foram registradas com sucesso.</div>
 </div>
@@ -138,9 +171,15 @@
     <div class="obra-info">
       <div class="obra-nome" id="obra-nome-display"></div>
       <div class="obra-meta">
-        <span>📅 Semana: <strong id="semana-display"></strong></span>
-        <span id="cliente-display-wrap" style="display:none">🏢 <span id="cliente-display"></span></span>
+        <span>&#128197; Semana: <strong id="semana-display"></strong></span>
+        <span id="cliente-display-wrap" style="display:none">&#127970; <span id="cliente-display"></span></span>
       </div>
+    </div>
+
+    <!-- G6 — Campo de nome do técnico (antes das etapas) -->
+    <div class="campo-tecnico">
+      <label for="nome-tecnico">Seu nome <span style="color:#64748b;font-size:0.85em">(opcional)</span></label>
+      <input type="text" id="nome-tecnico" placeholder="Ex: João Silva" autocomplete="name" />
     </div>
 
     <!-- Etapas -->
@@ -204,10 +243,14 @@
     setTimeout(() => el.classList.remove('show'), dur);
   }
 
+  // Alias para compatibilidade interna
+  const mostrarToast = toast;
+
   function mostrarErro(titulo, sub, detalhe) {
     document.getElementById('tela-loading').style.display = 'none';
     document.getElementById('tela-form').style.display = 'none';
     document.getElementById('tela-sucesso').style.display = 'none';
+    document.getElementById('tela-bloqueio').style.display = 'none';
     document.getElementById('tela-erro').style.display = '';
     document.getElementById('err-titulo').textContent = titulo;
     document.getElementById('err-sub').textContent = sub;
@@ -215,6 +258,38 @@
       document.getElementById('err-detalhe').textContent = detalhe;
       document.getElementById('err-detalhe').style.display = '';
     }
+  }
+
+  // M6 — Nova função para tela de bloqueio (semana já enviada, não usa tela de erro)
+  function mostrarBloqueio(semana, proxAberturaStr) {
+    document.getElementById('tela-loading').style.display = 'none';
+    document.getElementById('tela-form').style.display = 'none';
+    document.getElementById('tela-erro').style.display = 'none';
+    document.getElementById('tela-sucesso').style.display = 'none';
+    document.getElementById('tela-bloqueio').style.display = 'block';
+    document.getElementById('bloq-detalhe-texto').textContent =
+      'Semana: ' + semana + ' · Próxima abertura: ' + proxAberturaStr;
+  }
+
+  // G3 — Função centralizada de sucesso com mensagem diferenciada para fotos sem URLs
+  function mostrarSucesso(urlsPorEtapa, semanaEnvio, temFotos) {
+    document.getElementById('tela-form').style.display = 'none';
+    document.getElementById('tela-sucesso').style.display = '';
+
+    const semUrls = urlsPorEtapa && urlsPorEtapa._semUrls === true;
+    const msgFotos = semUrls
+      ? 'As fotos foram enviadas, mas os links não puderam ser recuperados. Verifique a pasta no Google Drive.'
+      : 'As fotos foram enviadas ao Google Drive com sucesso.';
+
+    let succMsg = 'Relatório enviado com sucesso para a semana de ' + semanaLabel(semanaEnvio) + '!';
+    if (temFotos && semUrls) {
+      succMsg += ' ' + msgFotos;
+    } else if (temFotos && !APPS_SCRIPT_URL) {
+      succMsg += ' Atenção: as fotos não foram enviadas pois o Apps Script ainda não está configurado.';
+    } else if (temFotos) {
+      succMsg += ' ' + msgFotos;
+    }
+    document.getElementById('succ-sub').textContent = succMsg;
   }
 
   function semanaLabel(semanaISO) {
@@ -263,12 +338,8 @@
       // Checar se já foi enviado nesta semana ISO
       const semanaAtual = semanaISO();
       if (linkData.semanaUltimoEnvio === semanaAtual) {
-        const proxSeg = proximaSegunda();
-        mostrarErro(
-          'Já enviado esta semana ✅',
-          'O relatório desta semana já foi preenchido. O formulário abre novamente na segunda-feira da semana que vem.',
-          'Semana bloqueada: ' + semanaAtual + '. Próxima abertura: ' + proxSeg.toLocaleDateString('pt-BR')
-        );
+        // M6 — Usar tela de bloqueio em vez de tela de erro
+        mostrarBloqueio(semanaAtual, proximaSegunda().toLocaleDateString('pt-BR'));
         return;
       }
 
@@ -295,10 +366,22 @@
     }
   }
 
+  // S5 — Atualizar contador de fotos por etapa
+  function atualizarContadorFotos(etapaId, count) {
+    const el = document.getElementById('counter-' + etapaId);
+    if (el) el.textContent = count + ' / 8 fotos';
+  }
+
   function renderEtapas(etapas) {
     const container = document.getElementById('etapas-container');
     if (!etapas.length) {
       container.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:20px 0;">Nenhuma etapa cadastrada nesta obra.</p>';
+      // C3 — Obra sem etapas não deve permitir envio
+      const btnEnviar = document.getElementById('btn-enviar');
+      if (btnEnviar) {
+        btnEnviar.disabled = true;
+        btnEnviar.textContent = 'Sem etapas — não é possível enviar';
+      }
       return;
     }
     container.innerHTML = '';
@@ -324,6 +407,7 @@
           </div>
           <input type="range" min="0" max="100" value="${pctAtual}" id="range-${etapa.id}"
             oninput="document.getElementById('pct-val-${etapa.id}').textContent=this.value+'%'" />
+          <p class="hint-slider">Você pode diminuir o valor se necessário — o novo percentual substituirá o anterior.</p>
         </div>
         <div class="obs-wrap">
           <div class="field">
@@ -340,6 +424,7 @@
               Foto
             </label>
           </div>
+          <p class="contador-fotos" id="counter-${etapa.id}">0 / 8 fotos</p>
         </div>`;
       container.appendChild(card);
     });
@@ -358,6 +443,8 @@
       comprimirImagem(file, base64 => {
         fotos[etapaId].push({ base64, nome: file.name });
         renderFotos(etapaId);
+        // S5 — Atualizar contador após adicionar foto
+        atualizarContadorFotos(etapaId, fotos[etapaId].length);
       });
     });
     e.target.value = ''; // reset para permitir re-upload do mesmo arquivo
@@ -403,7 +490,12 @@
       rem.title = 'Remover foto';
       rem.style.cssText = 'position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit;';
       rem.textContent = '✕';
-      rem.onclick = () => { fotos[etapaId].splice(idx, 1); renderFotos(etapaId); };
+      rem.onclick = () => {
+        fotos[etapaId].splice(idx, 1);
+        renderFotos(etapaId);
+        // S5 — Atualizar contador após remover foto
+        atualizarContadorFotos(etapaId, fotos[etapaId].length);
+      };
       wrap.appendChild(rem);
       grid.appendChild(wrap);
     });
@@ -483,6 +575,9 @@
 
     const temFotos = Object.values(fotos).some(arr => arr.length > 0);
 
+    // G6 — Capturar nome do técnico
+    const nomeTecnico = (document.getElementById('nome-tecnico')?.value || '').trim() || 'Anônimo';
+
     try {
       // 1. Upload das fotos para o Drive (se houver)
       if (temFotos) {
@@ -491,7 +586,8 @@
         btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Enviando...';
       }
 
-      const urlsPorEtapa = await uploadFotosParaDrive('equipe');
+      // G6 — Usar nomeTecnico em vez de 'equipe'
+      const urlsPorEtapa = await uploadFotosParaDrive(nomeTecnico);
 
       // 2. Montar dados das etapas (sem base64 — só URLs do Drive)
       btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Salvando relatório...';
@@ -522,27 +618,33 @@
           enviadoEm: agora,
           semana:    semanaEnvio,
           obraId:    linkData.obraId,
+          // G6 — Registrar respondente no Firestore
+          respondente: nomeTecnico,
         }),
         usado: true,
         semanaUltimoEnvio: semanaEnvio,
       });
 
-      document.getElementById('tela-form').style.display = 'none';
-      document.getElementById('tela-sucesso').style.display = '';
-
-      let succMsg = 'Relatório enviado com sucesso para a semana de ' + semanaLabel(semanaEnvio) + '!';
-      if (temFotos && urlsPorEtapa._semUrls) {
-        succMsg += ' As fotos foram enviadas ao Google Drive.';
-      } else if (temFotos && !APPS_SCRIPT_URL) {
-        succMsg += ' Atenção: as fotos não foram enviadas pois o Apps Script ainda não está configurado.';
-      }
-      document.getElementById('succ-sub').textContent = succMsg;
+      // G3 — Mostrar sucesso com mensagem diferenciada via função centralizada
+      mostrarSucesso(urlsPorEtapa, semanaEnvio, temFotos);
 
     } catch (e) {
       console.error('[enviar]', e);
-      toast('Erro ao enviar: ' + e.message, 5000);
+
+      // C2 — Verificar se a escrita já aconteceu mesmo com o erro de rede
+      try {
+        const snapCheck = await db.collection('links').doc(token).get();
+        if (snapCheck.exists && snapCheck.data().semanaUltimoEnvio === semanaISO()) {
+          // Gravou com sucesso apesar do erro — mostrar tela de sucesso
+          mostrarSucesso({}, semanaISO(), temFotos);
+          return;
+        }
+      } catch(e2) { /* ignora erro na verificação */ }
+
+      // Erro real — reabilitar botão
       btn.disabled = false;
       btn.innerHTML = '<svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Enviar Relatório';
+      mostrarToast('Erro ao enviar. Tente novamente.', 5000);
     }
   };
 

@@ -280,6 +280,10 @@
     }
     flushNow();
     if (Cloud.unsub) Cloud.unsub();
+    // S4 — Limpar pendingKey do localStorage ao fazer logout
+    if (Cloud.user) {
+      localStorage.removeItem(pendingKey(Cloud.user.uid));
+    }
     await auth.signOut();
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
     location.reload();
@@ -291,8 +295,8 @@
     // Supervisor = displayName do usuário logado (preenchido automaticamente)
     const autoSupervisor = Cloud.user.displayName || Cloud.user.email || '';
     state = Object.assign({ projectName: '', supervisorName: autoSupervisor, tasks: [], nextId: 1, relatorios: [], relNextId: 1 }, data, { ownerUid: Cloud.user.uid });
-    // Sempre mantém supervisor atualizado com o nome do usuário logado
-    state.supervisorName = autoSupervisor || state.supervisorName;
+    // G2 — Preservar valor editado pelo usuário; só usar autoSupervisor se supervisorName ainda não foi definido
+    state.supervisorName = state.supervisorName || autoSupervisor;
     if (!Array.isArray(state.tasks)) state.tasks = [];
     if (!Array.isArray(state.relatorios)) state.relatorios = [];
     projectNameEl.value = state.projectName;
@@ -431,6 +435,26 @@
   window.addEventListener('offline', () => { if (Cloud.user) setSync('offline'); });
   window.addEventListener('beforeunload', flushNow);
 
+  // M4 — Modal de confirmação de migração de dados locais (em vez de confirm())
+  function confirmarMigracaoModal(resolve) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+      <div style="background:#1e2130;border-radius:14px;padding:28px 24px;max-width:420px;width:90%;color:#e2e8f0;">
+        <h3 style="margin:0 0 10px;font-size:1.1rem;">&#128194; Projeto local encontrado</h3>
+        <p style="color:#94a3b8;font-size:0.9rem;margin:0 0 20px;line-height:1.5;">
+          Encontramos um cronograma salvo neste navegador. Deseja importá-lo para sua conta?
+        </p>
+        <div style="display:flex;gap:10px;">
+          <button id="_mig_sim" style="flex:1;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Usar este projeto</button>
+          <button id="_mig_nao" style="flex:1;padding:10px;background:#334155;color:#94a3b8;border:none;border-radius:8px;cursor:pointer;">Começar do zero</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#_mig_sim').onclick = () => { document.body.removeChild(overlay); resolve(true); };
+    overlay.querySelector('#_mig_nao').onclick = () => { document.body.removeChild(overlay); resolve(false); };
+  }
+
   // ── Entrada do usuário ──
   async function onSignedIn(user) {
     if (Cloud.user && Cloud.user.uid === user.uid) return;
@@ -453,7 +477,11 @@
       } else {
         // primeira vez nesta conta: aproveita o projeto local (se for deste usuário ou ainda sem dono)
         const hasLocal = local && Array.isArray(local.tasks) && local.tasks.length && (!local.ownerUid || local.ownerUid === uid);
-        const usable = hasLocal && confirm('Encontramos neste navegador um projeto salvo' + (local.projectName ? ' ("' + local.projectName + '")' : '') + ' com ' + local.tasks.length + ' etapa(s).\n\nOK = levar este projeto para a sua conta\nCancelar = começar com um projeto em branco');
+        // M4 — Usar modal em vez de confirm() para perguntar sobre migração de dados locais
+        let usable = false;
+        if (hasLocal) {
+          usable = await new Promise(resolve => confirmarMigracaoModal(resolve));
+        }
         applyState(usable ? local : {});
         Cloud.lastSynced = null; Cloud.queueSave(); flushNow();
         if (usable) toast('Seu projeto local foi enviado para a nuvem.', 3500);
@@ -474,19 +502,81 @@
       if (s === Cloud.lastSynced || s === stable(payload())) { Cloud.lastSynced = s; return; }
       if (timer) return; // há edição local aguardando envio: ela prevalece
       const modalOpen = typeof modalOverlay !== 'undefined' && !modalOverlay.hidden;
-      if (modalOpen) return;
+      // G5 — Guardar snapshot pendente quando modal está aberto (em vez de ignorar)
+      if (modalOpen) {
+        Cloud._pendingSnap = d;
+        // Criar aviso sutil se não existir
+        if (!document.getElementById('aviso-atualizacao-pendente')) {
+          const div = document.createElement('div');
+          div.id = 'aviso-atualizacao-pendente';
+          div.style.cssText = 'display:none;position:fixed;bottom:16px;right:16px;background:#1e40af;color:#fff;padding:10px 16px;border-radius:8px;font-size:0.85rem;z-index:9000;cursor:pointer;';
+          div.textContent = '🔄 Há atualizações disponíveis — clique para aplicar';
+          div.onclick = () => {
+            if (Cloud._pendingSnap) {
+              Cloud._pendingSnap = null;
+              div.style.display = 'none';
+              // Fechar modal e reaplicar
+              if (typeof fecharModal === 'function') fecharModal();
+            }
+          };
+          document.body.appendChild(div);
+        }
+        const aviso = document.getElementById('aviso-atualizacao-pendente');
+        if (aviso) aviso.style.display = 'block';
+        return;
+      }
       applyState(d);
       toast('Projeto atualizado com alterações de outro dispositivo.', 3000);
     }, () => {});
-    Tour.maybeStart(uid, profile.tourConcluido === true, () => userDoc(uid).set({ tourConcluido: true }, { merge: true }).catch(() => {}));
+
+    // M7 — Tour guiado com banner opt-in em vez de início automático
+    if (!profile.tourConcluido) {
+      setTimeout(() => {
+        if (document.getElementById('banner-tour')) return; // já existe
+        let doneLocal = false;
+        try { doneLocal = localStorage.getItem('oreon_tour_done_' + uid) === '1'; } catch (e) {}
+        if (doneLocal) return; // já concluiu localmente
+        const banner = document.createElement('div');
+        banner.id = 'banner-tour';
+        banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e2130;border:1px solid #334155;border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:14px;z-index:8000;box-shadow:0 4px 20px rgba(0,0,0,0.4);white-space:nowrap;';
+        banner.innerHTML = `
+          <span style="color:#e2e8f0;font-size:0.9rem;">&#127919; Quer fazer o tour guiado?</span>
+          <button id="btn-tour-sim" style="padding:7px 14px;background:#3b82f6;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;">Sim</button>
+          <button id="btn-tour-nao" style="padding:7px 14px;background:#334155;color:#94a3b8;border:none;border-radius:7px;cursor:pointer;">Pular</button>`;
+        document.body.appendChild(banner);
+        banner.querySelector('#btn-tour-sim').onclick = () => {
+          document.body.removeChild(banner);
+          Tour.maybeStart(uid, false, () => userDoc(uid).set({ tourConcluido: true }, { merge: true }).catch(() => {}));
+        };
+        banner.querySelector('#btn-tour-nao').onclick = () => {
+          document.body.removeChild(banner);
+          // Marcar tour como concluído para não mostrar de novo
+          userDoc(uid).set({ tourConcluido: true }, { merge: true }).catch(() => {});
+        };
+      }, 2000);
+    }
   }
+
+  // G5 — Ao fechar modal, aplicar snapshot pendente se houver
+  const _origFecharModal = window.fecharModal;
+  window.fecharModal = function(...args) {
+    if (typeof _origFecharModal === 'function') _origFecharModal(...args);
+    if (Cloud._pendingSnap) {
+      const snap = Cloud._pendingSnap;
+      Cloud._pendingSnap = null;
+      const aviso = document.getElementById('aviso-atualizacao-pendente');
+      if (aviso) aviso.style.display = 'none';
+      applyState(snap);
+      toast('Projeto atualizado com alterações de outro dispositivo.', 3000);
+    }
+  };
 
   auth.onAuthStateChanged(user => {
     if (user) {
-      // Se não veio do painel (sem ?obra= na URL), redireciona para o painel
+      // C1 — Prevenir redirect loop: verificar se não está em signup e se OBRA_ID é vazio/nulo
       const params = new URLSearchParams(window.location.search);
-      if (!params.has('obra') && !Cloud.signingUp) {
-        window.location.href = 'painel.html';
+      if (!params.has('obra') && !Cloud.signingUp && !sessionStorage.getItem('oreon_signup_flow')) {
+        window.location.replace('painel.html');
         return;
       }
       if (!Cloud.signingUp) onSignedIn(user);

@@ -253,6 +253,41 @@
 
     /* ── SEMANA BADGE aviso ── */
     .alerta-semana { display: flex; align-items: center; gap: 6px; background: var(--yellow-soft); border: 1px solid rgba(217,119,6,.25); color: var(--yellow); border-radius: 7px; padding: 7px 12px; font-size: 11.5px; font-weight: 600; margin-bottom: 16px; }
+
+    .badge-arquivada {
+      background: #374151; color: #9ca3af; font-size: 0.68rem;
+      font-weight: 700; padding: 2px 8px; border-radius: 20px;
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    /* Modal de link gerado */
+    #modal-link-overlay {
+      display: none;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+      z-index: 9999; align-items: center; justify-content: center;
+    }
+    #modal-link-overlay.ativo { display: flex; }
+    #modal-link-box {
+      background: #1e2130; border-radius: 14px; padding: 28px 24px;
+      max-width: 480px; width: 92%; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    #modal-link-box h3 { margin: 0 0 6px; font-size: 1.1rem; color: #e2e8f0; }
+    #modal-link-box p  { margin: 0 0 14px; font-size: 0.85rem; color: #94a3b8; }
+    #modal-link-input {
+      width: 100%; box-sizing: border-box;
+      background: #0f1117; border: 1px solid #334155; color: #cbd5e1;
+      border-radius: 8px; padding: 10px 12px; font-size: 0.82rem;
+      margin-bottom: 16px; word-break: break-all;
+    }
+    .modal-link-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    .modal-link-btns button {
+      flex: 1; padding: 10px; border-radius: 8px; border: none;
+      cursor: pointer; font-size: 0.9rem; font-weight: 600;
+    }
+    #btn-copiar-link { background: #3b82f6; color: #fff; }
+    #btn-copiar-link:hover { background: #2563eb; }
+    #btn-wpp-link { background: #25d366; color: #fff; }
+    #btn-wpp-link:hover { background: #1da851; }
+    #btn-fechar-link { background: #334155; color: #94a3b8; flex: 0 0 auto; padding: 10px 16px; }
   </style>
 </head>
 <body>
@@ -561,16 +596,19 @@
   }
 
   // ── MIGRAÇÃO DO PROJETO ANTIGO ──
+  let _migrando = false;
   async function migrarProjeto(uid) {
+    if (_migrando) return;
+    _migrando = true;
     try {
       const principalSnap = await projsRef(uid).doc('principal').get();
-      if (!principalSnap.exists) return;
+      if (!principalSnap.exists) { _migrando = false; return; }
       const dados = principalSnap.data().data || {};
-      if (!dados.tasks || !dados.tasks.length) return;
+      if (!dados.tasks || !dados.tasks.length) { _migrando = false; return; }
       const nomeObra = dados.projectName || 'Obra importada';
       const existentes = await projsRef(uid).orderBy('criadoEm', 'asc').limit(1).get();
       // Só migra se não há obras ainda (para não duplicar em logins subsequentes)
-      if (!existentes.empty) return;
+      if (!existentes.empty) { _migrando = false; return; }
       await projsRef(uid).add({
         nome: nomeObra,
         cliente: '',
@@ -585,6 +623,7 @@
     } catch (e) {
       console.warn('[migração]', e);
     }
+    _migrando = false;
   }
 
   // ── CARREGAR OBRAS (tempo real) ──
@@ -595,8 +634,6 @@
       .orderBy('criadoEm', 'desc')
       .onSnapshot(snap => {
         obras = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Migrar o projeto principal se for o primeiro login
-        if (obras.length === 0) migrarProjeto(uid);
         setSync('ok', 'Sincronizado');
         renderCards();
         verificarAlertas();
@@ -610,7 +647,7 @@
     const busca = document.getElementById('busca').value.toLowerCase();
 
     let lista = obras.filter(o => {
-      if (busca && !o.nome.toLowerCase().includes(busca) && !(o.cliente || '').toLowerCase().includes(busca)) return false;
+      if (busca && !o.nome.toLowerCase().includes(busca) && !(o.cliente || '').toLowerCase().includes(busca) && !(o.supervisorName || '').toLowerCase().includes(busca)) return false;
       if (filtroAtivo === 'ativas') return !o.arquivada;
       if (filtroAtivo === 'arquivadas') return o.arquivada;
       return true;
@@ -639,9 +676,16 @@
     lista.forEach(obra => {
       const dados = obra.data || {};
       const tasks = dados.tasks || [];
-      const pctGeral = tasks.length
-        ? Math.round(tasks.reduce((s, t) => s + (t.percentComplete || 0), 0) / tasks.length)
-        : 0;
+      let pctGeral = 0;
+      if (tasks.length) {
+        let totalPeso = 0, totalPonderado = 0;
+        tasks.forEach(e => {
+          const dur = Math.max(1, (new Date(e.end) - new Date(e.start)) / 86400000);
+          totalPeso += dur;
+          totalPonderado += (e.percentComplete || 0) * dur;
+        });
+        pctGeral = totalPeso > 0 ? Math.round(totalPonderado / totalPeso) : 0;
+      }
 
       // Verificar status
       let statusLabel = 'No prazo';
@@ -691,6 +735,7 @@
         <div>
           <div class="card-nome">${esc(obra.nome)}</div>
           ${obra.cliente ? `<div class="card-cliente">${esc(obra.cliente)}</div>` : ''}
+          ${obra.arquivada ? '<span class="badge-arquivada">ARQUIVADA</span>' : ''}
         </div>
         <div class="card-pct-wrap">
           <div class="pct-row"><span class="pct-label">Progresso geral</span><span class="pct-val">${pctGeral}%</span></div>
@@ -717,9 +762,6 @@
       grid.appendChild(card);
     });
 
-    // Contar obras sem envio nesta semana
-    const semFiltro = obras.filter(o => !o.arquivada && o.semanaUltimoEnvio !== semana);
-    document.getElementById('alerta-semana').style.display = semFiltro.length > 0 && diasParaSexta() === 0 ? '' : 'none';
   };
 
   function diasParaSexta() {
@@ -810,7 +852,9 @@
     const cliente = document.getElementById('m-cliente').value.trim();
     const supervisor = document.getElementById('m-supervisor').value.trim();
     if (!nome) { document.getElementById('m-nome').focus(); return; }
+    const isEdit = !!editingId;
     document.querySelector('.mbtn.ok').disabled = true;
+    document.querySelector('.mbtn.ok').textContent = 'Salvando...';
     try {
       if (editingId) {
         // Editar
@@ -844,10 +888,12 @@
       }
       fecharModal();
     } catch (e) { toast('Erro ao salvar: ' + e.message); }
+    document.querySelector('.mbtn.ok').textContent = isEdit ? 'Salvar' : 'Criar Obra';
     document.querySelector('.mbtn.ok').disabled = false;
   };
 
   window.arquivarObra = async function(id, arquivar) {
+    if (arquivar && !confirm('Arquivar esta obra? Você pode reativá-la depois.')) return;
     try {
       await projsRef(currentUser.uid).doc(id).update({ arquivada: arquivar });
       toast(arquivar ? 'Obra arquivada.' : 'Obra reativada.');
@@ -922,9 +968,7 @@
       const msg = '🏗️ *Relatório Semanal — ' + obra.nome + '*\n\nOlá equipe! Por favor preencham o andamento pelo link abaixo:\n\n' + link;
       const wpUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
 
-      if (confirm('Link copiado! 📋\n\n' + link + '\n\nDeseja abrir o WhatsApp Web para enviar?')) {
-        window.open(wpUrl, '_blank');
-      }
+      abrirModalLink(link, wpUrl);
     } catch (e) {
       console.error('[link]', e);
       toast('Erro ao gerar link: ' + e.message);
@@ -972,6 +1016,31 @@
     }
   });
 
+
+  let _linkGeradoUrl = '';
+  let _linkGeradoWpp = '';
+
+  function abrirModalLink(linkUrl, wppUrl) {
+    _linkGeradoUrl = linkUrl;
+    _linkGeradoWpp = wppUrl;
+    document.getElementById('modal-link-input').value = linkUrl;
+    document.getElementById('modal-link-overlay').classList.add('ativo');
+  }
+  function fecharModalLink() {
+    document.getElementById('modal-link-overlay').classList.remove('ativo');
+  }
+  function copiarLinkModal() {
+    const ta = document.getElementById('modal-link-input');
+    ta.select();
+    document.execCommand('copy');
+    const btn = document.getElementById('btn-copiar-link');
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = 'Copiar link', 2000);
+  }
+  function abrirWppModal() {
+    if (_linkGeradoWpp) window.open(_linkGeradoWpp, '_blank');
+  }
+
   // Fechar drops ao clicar fora
   document.addEventListener('click', () => {
     document.querySelectorAll('.card-drop').forEach(d => d.remove());
@@ -979,5 +1048,20 @@
   });
 })();
 </script>
+
+<!-- Modal link gerado -->
+<div id="modal-link-overlay">
+  <div id="modal-link-box">
+    <h3>📋 Link do Relatório</h3>
+    <p>Copie o link abaixo ou envie direto pelo WhatsApp:</p>
+    <textarea id="modal-link-input" rows="3" readonly></textarea>
+    <div class="modal-link-btns">
+      <button id="btn-copiar-link" onclick="copiarLinkModal()">Copiar link</button>
+      <button id="btn-wpp-link" onclick="abrirWppModal()">Enviar WhatsApp</button>
+      <button id="btn-fechar-link" onclick="fecharModalLink()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
