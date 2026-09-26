@@ -3,385 +3,1080 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cronograma de Obras</title>
+  <title>Oreon — Painel de Obras</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="cronograma.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --surface2: #f8fafc;
+      --border: #e2e8f0;
+      --border2: #cbd5e1;
+      --text: #0f172a;
+      --text2: #475569;
+      --text3: #94a3b8;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --accent-hover: #1d4ed8;
+      --green: #16a34a;
+      --green-soft: #f0fdf4;
+      --yellow: #d97706;
+      --yellow-soft: #fffbeb;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+      --radius: 10px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --surface2: #162032;
+        --border: #334155;
+        --border2: #475569;
+        --text: #f1f5f9;
+        --text2: #94a3b8;
+        --text3: #64748b;
+        --accent-soft: #1e3a5f;
+        --green-soft: #052e16;
+        --yellow-soft: #431407;
+        --red-soft: #450a0a;
+        --shadow: 0 1px 3px rgba(0,0,0,.3);
+        --shadow-md: 0 4px 12px rgba(0,0,0,.4);
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0f172a; --surface: #1e293b; --surface2: #162032;
+      --border: #334155; --border2: #475569; --text: #f1f5f9;
+      --text2: #94a3b8; --text3: #64748b; --accent-soft: #1e3a5f;
+      --green-soft: #052e16; --yellow-soft: #431407; --red-soft: #450a0a;
+      --shadow: 0 1px 3px rgba(0,0,0,.3); --shadow-md: 0 4px 12px rgba(0,0,0,.4);
+    }
+
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── AUTH ── */
+    #auth-overlay {
+      position: fixed; inset: 0; z-index: 9999; display: flex;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    }
+    .auth-brand {
+      width: 380px; flex-shrink: 0; padding: 48px 40px;
+      display: flex; flex-direction: column; gap: 0; border-right: 1px solid rgba(255,255,255,.1);
+    }
+    @media (max-width: 700px) { .auth-brand { display: none; } }
+    .auth-logo { font-size: 20px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .auth-logo-mark { width: 28px; height: 28px; background: #2563eb; border-radius: 7px; display: inline-block; }
+    .auth-brand-mid { margin-top: auto; margin-bottom: auto; }
+    .auth-brand-mid h1 { font-size: 22px; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 20px; }
+    .auth-brand-mid ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .auth-brand-mid li { font-size: 13px; color: #94a3b8; padding-left: 18px; position: relative; }
+    .auth-brand-mid li::before { content: '✓'; position: absolute; left: 0; color: #2563eb; font-weight: 700; }
+    .auth-brand-foot { font-size: 11px; color: #475569; margin-top: auto; }
+    .auth-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .auth-card { background: #fff; border-radius: 14px; padding: 36px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    .auth-loading { text-align: center; padding: 20px; }
+    .auth-spin { width: 28px; height: 28px; border: 3px solid #e2e8f0; border-top-color: #2563eb; border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .auth-form h2 { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .auth-sub { font-size: 12.5px; color: #64748b; margin-bottom: 18px; }
+    .af { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+    .af input { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px; font-size: 13px; font-family: inherit; outline: none; transition: border .15s; }
+    .af input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .pw { position: relative; }
+    .pw input { width: 100%; padding-right: 64px; }
+    .pw-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 11px; color: #64748b; cursor: pointer; padding: 4px; }
+    .auth-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .chk { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #374151; cursor: pointer; }
+    .auth-link { background: none; border: none; color: #2563eb; font-size: 12px; cursor: pointer; text-decoration: underline; font-family: inherit; padding: 0; }
+    .auth-msg { font-size: 12px; min-height: 18px; margin-bottom: 8px; }
+    .auth-msg.err { color: #dc2626; }
+    .auth-msg.ok { color: #16a34a; }
+    .auth-btn { width: 100%; background: #2563eb; color: #fff; border: none; border-radius: 7px; padding: 10px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s; }
+    .auth-btn:hover { background: #1d4ed8; }
+    .auth-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .auth-switch { font-size: 12px; color: #64748b; text-align: center; margin-top: 14px; }
+    .auth-note { font-size: 11px; color: #92400e; background: #fef3c7; border-radius: 6px; padding: 8px 10px; margin-top: 14px; }
+    .closing { animation: fadeOut .25s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
+
+    /* ── HEADER ── */
+    header {
+      background: #1e293b; color: #f1f5f9;
+      padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 16px;
+      position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 0 rgba(0,0,0,.2);
+    }
+    .hlogo { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .hlogo-mark { width: 22px; height: 22px; background: #2563eb; border-radius: 5px; }
+    .hflex { flex: 1; }
+    .hactions { display: flex; align-items: center; gap: 8px; }
+    .btn-hdr { background: rgba(255,255,255,.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer; transition: background .15s; display: flex; align-items: center; gap: 6px; }
+    .btn-hdr:hover { background: rgba(255,255,255,.14); }
+    .btn-hdr.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .btn-hdr.primary:hover { background: #1d4ed8; }
+    #user-menu { position: relative; }
+    #user-btn { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 4px 10px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: #e2e8f0; font-family: inherit; font-size: 12px; }
+    .ua { width: 22px; height: 22px; background: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    #user-drop { position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); min-width: 180px; overflow: hidden; z-index: 200; }
+    .ud-head { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .ud-name { display: block; font-size: 13px; font-weight: 600; color: var(--text); }
+    .ud-mail { font-size: 11px; color: var(--text3); }
+    #user-drop button { display: block; width: 100%; text-align: left; padding: 9px 12px; background: none; border: none; font-size: 12.5px; color: var(--text2); cursor: pointer; font-family: inherit; transition: background .1s; }
+    #user-drop button:hover { background: var(--surface2); }
+    .ud-danger { color: var(--red) !important; }
+
+    /* ── CONTEÚDO ── */
+    #content { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+    .page-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: var(--text3); margin-bottom: 24px; }
+
+    /* ── FILTROS ── */
+    .filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .filter-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; color: var(--text2); cursor: pointer; font-family: inherit; transition: all .15s; }
+    .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+    .filter-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    .filter-search { flex: 1; min-width: 160px; max-width: 280px; }
+    .filter-search input { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12.5px; background: var(--surface); color: var(--text); font-family: inherit; outline: none; }
+    .filter-search input:focus { border-color: var(--accent); }
+
+    /* ── GRID DE CARDS ── */
+    .obras-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+
+    .card-nova {
+      border: 2px dashed var(--border2); border-radius: var(--radius);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 36px 20px; gap: 10px; cursor: pointer; transition: all .18s;
+      color: var(--text3); min-height: 180px;
+    }
+    .card-nova:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .card-nova svg { width: 28px; height: 28px; }
+    .card-nova span { font-size: 13px; font-weight: 600; }
+
+    .obra-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px; display: flex; flex-direction: column; gap: 12px;
+      box-shadow: var(--shadow); transition: box-shadow .18s, border-color .18s; cursor: pointer;
+      position: relative; min-height: 180px;
+    }
+    .obra-card:hover { box-shadow: var(--shadow-md); border-color: var(--border2); }
+    .obra-card.arquivada { opacity: .55; }
+
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card-status { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 4px; }
+    .status-prazo { background: var(--green-soft); color: var(--green); }
+    .status-atrasada { background: var(--red-soft); color: var(--red); }
+    .status-concluida { background: var(--accent-soft); color: var(--accent); }
+    .status-arquivada { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+
+    .card-menu-btn { background: none; border: none; color: var(--text3); cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 16px; line-height: 1; transition: background .1s; flex-shrink: 0; }
+    .card-menu-btn:hover { background: var(--surface2); color: var(--text); }
+
+    .card-nome { font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .card-cliente { font-size: 12px; color: var(--text3); margin-top: 1px; }
+
+    .card-pct-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .pct-row { display: flex; justify-content: space-between; align-items: center; }
+    .pct-label { font-size: 11px; color: var(--text3); }
+    .pct-val { font-size: 12px; font-weight: 700; color: var(--text); }
+    .pct-bar { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .pct-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width .4s; }
+    .pct-fill.done { background: var(--green); }
+    .pct-fill.atrasada { background: var(--red); }
+
+    .card-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .meta-item { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+    .meta-item svg { flex-shrink: 0; opacity: .7; }
+
+    .card-bottom { display: flex; gap: 8px; margin-top: auto; }
+    .card-link-badge {
+      flex: 1; background: var(--yellow-soft); color: var(--yellow); border: 1px solid rgba(217,119,6,.2);
+      border-radius: 6px; padding: 5px 8px; font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .card-link-badge.sem-envio { background: var(--red-soft); color: var(--red); border-color: rgba(220,38,38,.15); }
+    .card-link-badge.ok { background: var(--green-soft); color: var(--green); border-color: rgba(22,163,74,.15); }
+
+    /* ── DROPDOWN DE AÇÃO DO CARD ── */
+    .card-drop {
+      position: absolute; top: 44px; right: 12px; z-index: 50;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: var(--shadow-md); min-width: 170px; overflow: hidden;
+    }
+    .card-drop button { display: block; width: 100%; text-align: left; padding: 9px 12px; background: none; border: none; font-size: 12.5px; color: var(--text2); cursor: pointer; font-family: inherit; transition: background .1s; }
+    .card-drop button:hover { background: var(--surface2); color: var(--text); }
+    .card-drop .sep { height: 1px; background: var(--border); }
+    .card-drop .danger { color: var(--red); }
+
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); grid-column: 1/-1; }
+    .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── MODAL NOVA OBRA ── */
+    #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
+    #modal-overlay.open { display: flex; }
+    #modal { background: var(--surface); border-radius: 12px; padding: 24px; width: 100%; max-width: 440px; box-shadow: var(--shadow-md); }
+    #modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .mfield { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .mfield label { font-size: 11.5px; font-weight: 600; color: var(--text2); }
+    .mfield input, .mfield select { border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border .15s; }
+    .mfield input:focus, .mfield select:focus { border-color: var(--accent); }
+    .mfooter { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    .mbtn { padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: background .15s; }
+    .mbtn.cancel { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+    .mbtn.cancel:hover { background: var(--border); }
+    .mbtn.ok { background: var(--accent); color: #fff; }
+    .mbtn.ok:hover { background: var(--accent-hover); }
+
+    /* ── TOAST ── */
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #f1f5f9; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 9999; pointer-events: none; opacity: 0; transition: opacity .3s; white-space: nowrap; max-width: 90vw; }
+    #toast.show { opacity: 1; }
+
+    /* ── LOADING ── */
+    #loading { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 500; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+    #loading.show { display: flex; }
+    .load-spin { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    .load-msg { font-size: 13px; color: var(--text3); }
+
+    /* ── SYNC STATUS ── */
+    #sync-status { font-size: 11px; margin-left: 8px; padding: 3px 8px; border-radius: 4px; }
+    .sync-ok { color: var(--green); }
+    .sync-busy { color: var(--yellow); }
+    .sync-warn, .sync-err { color: var(--red); }
+    .sync-local { color: var(--text3); }
+
+    /* ── SEMANA BADGE aviso ── */
+    .alerta-semana { display: flex; align-items: center; gap: 6px; background: var(--yellow-soft); border: 1px solid rgba(217,119,6,.25); color: var(--yellow); border-radius: 7px; padding: 7px 12px; font-size: 11.5px; font-weight: 600; margin-bottom: 16px; }
+
+    .badge-arquivada {
+      background: #374151; color: #9ca3af; font-size: 0.68rem;
+      font-weight: 700; padding: 2px 8px; border-radius: 20px;
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    /* Modal de link gerado */
+    #modal-link-overlay {
+      display: none;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+      z-index: 9999; align-items: center; justify-content: center;
+    }
+    #modal-link-overlay.ativo { display: flex; }
+    #modal-link-box {
+      background: #1e2130; border-radius: 14px; padding: 28px 24px;
+      max-width: 480px; width: 92%; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    #modal-link-box h3 { margin: 0 0 6px; font-size: 1.1rem; color: #e2e8f0; }
+    #modal-link-box p  { margin: 0 0 14px; font-size: 0.85rem; color: #94a3b8; }
+    #modal-link-input {
+      width: 100%; box-sizing: border-box;
+      background: #0f1117; border: 1px solid #334155; color: #cbd5e1;
+      border-radius: 8px; padding: 10px 12px; font-size: 0.82rem;
+      margin-bottom: 16px; word-break: break-all;
+    }
+    .modal-link-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    .modal-link-btns button {
+      flex: 1; padding: 10px; border-radius: 8px; border: none;
+      cursor: pointer; font-size: 0.9rem; font-weight: 600;
+    }
+    #btn-copiar-link { background: #3b82f6; color: #fff; }
+    #btn-copiar-link:hover { background: #2563eb; }
+    #btn-wpp-link { background: #25d366; color: #fff; }
+    #btn-wpp-link:hover { background: #1da851; }
+    #btn-fechar-link { background: #334155; color: #94a3b8; flex: 0 0 auto; padding: 10px 16px; }
+  </style>
 </head>
 <body>
 
-<div id="app">
-  <!-- Header -->
-  <header id="header">
-    <span class="logo">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/>
-      </svg>
-      Oreon Cronograma
-    </span>
-    <div class="hdr-div"></div>
-    <input id="project-name" type="text" value="" placeholder="Nome da obra" spellcheck="false" />
-    <div style="flex:1"></div>
-    <!-- user-menu inserido pelo JS (cronograma-cloud.js) -->
-  </header>
-
-  <!-- Ribbon (substitui toolbar) -->
-  <div id="ribbon" class="toolbar">
-    <!-- Grupo VISTA -->
-    <div class="rib-group">
-      <div class="rib-btns">
-        <button class="rib-btn active" id="view-gantt" title="Vista Gantt">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="3" y1="7" x2="10" y2="7"/><rect x="10" y="5" width="8" height="4" rx="1"/><line x1="3" y1="12" x2="7" y2="12"/><rect x="7" y="10" width="11" height="4" rx="1"/><line x1="3" y1="17" x2="12" y2="17"/><rect x="12" y="15" width="6" height="4" rx="1"/></svg>
-          <span>Gantt</span>
-        </button>
-        <button class="rib-btn" id="view-table" title="Só tabela">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
-          <span>Tabela</span>
-        </button>
-        <button class="rib-btn" id="view-relatorio" title="Relatório Semanal">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          <span>Relatório</span>
-        </button>
-      </div>
-      <div class="rib-label">VISTA</div>
-    </div>
-
-    <div class="rib-sep"></div>
-
-    <!-- Grupo PERÍODO -->
-    <div class="rib-group">
-      <div class="rib-btns" id="zoom-controls">
-        <button class="rib-btn rib-btn-sm" id="zoom-out" title="Reduzir zoom">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-        </button>
-        <button class="rib-btn rib-btn-sm" id="zoom-reset" title="Zoom semana">Semana</button>
-        <button class="rib-btn rib-btn-sm" id="zoom-in" title="Aumentar zoom">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-        </button>
-        <button class="rib-btn rib-btn-sm" id="btn-today" title="Ir para hoje">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Hoje
-        </button>
-      </div>
-      <div class="rib-label">PERÍODO</div>
-    </div>
-
-    <div class="rib-sep"></div>
-
-    <!-- Grupo TAREFAS -->
-    <div class="rib-group">
-      <div class="rib-btns">
-        <button class="rib-btn rib-btn-primary" id="btn-new-task" title="Nova Tarefa">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nova Tarefa
-        </button>
-        <button class="rib-btn" id="btn-recalc" title="Recalcular datas">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-          <span>Recalcular</span>
-        </button>
-      </div>
-      <div class="rib-label">TAREFAS</div>
-    </div>
-
-    <div class="rib-sep"></div>
-
-    <!-- Grupo BUSCA -->
-    <div class="rib-group">
-      <div class="rib-btns">
-        <div id="search-wrap">
-          <span id="search-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </span>
-          <input type="text" id="search-input" placeholder="Buscar tarefa..." />
-          <button id="search-clear" title="Limpar">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      </div>
-      <div class="rib-label">BUSCA</div>
-    </div>
-
-    <div class="rib-sep"></div>
-
-    <!-- Grupo DADOS -->
-    <div class="rib-group">
-      <div class="rib-btns">
-        <button class="rib-btn rib-btn-sm" id="btn-export-pdf" title="Exportar PDF">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
-          PDF
-        </button>
-        <button class="rib-btn rib-btn-sm" id="btn-export-json" title="Exportar JSON">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-          JSON
-        </button>
-        <button class="rib-btn rib-btn-sm" id="btn-import" title="Importar JSON">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Importar
-        </button>
-      </div>
-      <div class="rib-label">DADOS</div>
-    </div>
-
-    <div style="flex:1"></div>
-
-    <!-- Grupo NAVEGAÇÃO (inserido pelo cloud.js quando autenticado) -->
-    <div class="rib-group" id="rib-nav" style="display:none">
-      <div class="rib-btns">
-        <button class="rib-btn rib-btn-sm" id="btn-painel" title="Voltar ao painel de obras">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span>Painel</span>
-        </button>
-        <button class="rib-btn rib-btn-sm" id="btn-gerar-link" title="Gerar link semanal para a equipe preencher">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-          <span>Link Semana</span>
-        </button>
-        <button class="rib-btn rib-btn-sm" id="btn-tour" title="Rever o tour guiado">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M6.2 6.3a1.9 1.9 0 013.6.7c0 1.3-1.8 1.6-1.8 2.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.6" r=".8" fill="currentColor"/></svg>
-          <span>Ajuda</span>
-        </button>
-      </div>
-      <div class="rib-label">NAVEGAÇÃO</div>
-    </div>
-    <div class="rib-sep" id="rib-nav-sep" style="display:none"></div>
-
-    <!-- Grupo SISTEMA (alinhado à direita) -->
-    <div class="rib-group">
-      <div class="rib-btns">
-        <button class="rib-btn rib-btn-sm rib-btn-danger" id="btn-clear" title="Limpar todas as tarefas">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-          Limpar
-        </button>
-        <button class="rib-btn rib-btn-sm" id="btn-theme" title="Alternar tema claro/escuro">
-          <svg id="icon-theme-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          <svg id="icon-theme-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="display:none;"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-          Tema
-        </button>
-      </div>
-      <div class="rib-label">SISTEMA</div>
-    </div>
-
-  </div>
-
-  <!-- Main -->
-  <div id="main">
-    <!-- Tabela -->
-    <div id="table-panel">
-      <div id="table-scroll">
-        <table id="task-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Nome da Tarefa</th>
-              <th class="col-dur">Dur.</th>
-              <th class="col-date">Início</th>
-              <th class="col-date">Fim</th>
-              <th class="col-ant">Antec.</th>
-              <th class="col-act">Ações</th>
-            </tr>
-          </thead>
-          <tbody id="task-body"></tbody>
-        </table>
-        <div id="empty-state" hidden>
-          <div class="es-icon">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".35"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
-          </div>
-          <p>Nenhuma tarefa. Clique em <strong>Nova Tarefa</strong>.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Splitter -->
-    <div id="splitter"></div>
-
-    <!-- Gantt -->
-    <div id="gantt-panel">
-      <div id="gantt-header"><svg id="gantt-hdr-svg"></svg></div>
-      <div id="gantt-body-wrap">
-        <div id="gantt-svg-wrap"><svg id="gantt-svg"></svg></div>
-      </div>
-      <div id="gantt-legend">
-        <div class="legend-item"><div class="legend-swatch sw-bar"></div> Tarefa</div>
-        <div class="legend-item"><div class="legend-swatch sw-weekend"></div> Fim de semana</div>
-        <div class="legend-item"><div class="legend-swatch sw-holiday"></div> Feriado nacional</div>
-        <div class="legend-item"><div class="legend-swatch sw-today"></div> Hoje</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Relatório Semanal Panel -->
-  <div id="relatorio-panel" style="display:none;flex:1;overflow:auto;padding:20px 24px;background:var(--bg);">
-    <div style="max-width:860px;margin:0 auto;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
-        <h2 style="margin:0;font-size:17px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          Relatório Semanal de Obras
-        </h2>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-primary" id="btn-rel-new">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nova Semana
-          </button>
-        </div>
-      </div>
-      <!-- Bloco estático de link + QR -->
-      <div id="link-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:18px;">
-        <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-          <div id="link-qr" style="flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <p style="font-size:11.5px;color:var(--text-2);font-weight:600;margin:0 0 6px;">LINK DA EQUIPE TÉCNICA</p>
-            <a id="link-url" href="#" target="_blank" style="font-size:13px;color:var(--accent);word-break:break-all;text-decoration:none;font-weight:500;"></a>
-            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-              <button onclick="copiarLink()" style="font-size:12px;padding:5px 12px;border:1px solid var(--border-2);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">📋 Copiar</button>
-              <button onclick="enviarWpp()" style="font-size:12px;padding:5px 12px;border:none;border-radius:6px;background:#25d366;color:#fff;cursor:pointer;">📲 WhatsApp</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="rel-list"></div>
-      <div id="rel-empty" style="text-align:center;padding:60px 20px;color:var(--text-3);">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px;opacity:.35;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="14" y2="18"/></svg>
-        <p style="font-size:14px;">Nenhum relatório ainda.<br>Clique em <strong>Nova Semana</strong> para começar.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Status bar -->
-  <div id="statusbar">
-    <span><span class="dot"></span> <span id="save-time">Salvo localmente</span></span>
-    <span id="stat-tasks">0 tarefas</span>
-    <span id="stat-duration">—</span>
-    <span id="stat-range">—</span>
-  </div>
+<!-- LOADING OVERLAY -->
+<div id="loading" class="show">
+  <div class="load-spin"></div>
+  <div class="load-msg">Carregando...</div>
 </div>
 
-<!-- Modal (tabbed) -->
-<div id="modal-overlay" hidden>
-  <div id="modal" role="dialog" aria-modal="true" style="max-width:540px;">
-    <div id="modal-header">
-      <span id="modal-title">Nova Tarefa</span>
-      <button class="icon-btn" id="modal-close">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay" style="display:none">
+  <aside class="auth-brand">
+    <div><div class="auth-logo"><span class="auth-logo-mark"></span>Oreon Cronograma</div></div>
+    <div class="auth-brand-mid">
+      <h1>Gerencie todas as suas obras em um só lugar.</h1>
+      <ul>
+        <li>Cronograma com Gantt e dependências</li>
+        <li>Relatório semanal em PDF para o cliente</li>
+        <li>Link para a equipe preencher o andamento</li>
+        <li>Dados na nuvem, acessíveis de qualquer lugar</li>
+      </ul>
     </div>
-    <div class="modal-tabs">
-      <button class="modal-tab active" data-tab="tab-geral">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-        Geral
-      </button>
-      <button class="modal-tab" data-tab="tab-pred">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-        Antecessores
-      </button>
-      <button class="modal-tab" data-tab="tab-adv">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
-        Avançado
-      </button>
+    <div class="auth-brand-foot">Hagana Tecnologia &nbsp;|&nbsp; Oreon Soluções</div>
+  </aside>
+  <main class="auth-main">
+    <div class="auth-card">
+      <div class="auth-loading" id="auth-loading"><div class="auth-spin"></div><p id="auth-loading-msg">Verificando sessão...</p></div>
+      <form id="form-login" class="auth-form" hidden novalidate>
+        <h2>Entrar</h2>
+        <p class="auth-sub">Acesse sua conta para ver seus cronogramas.</p>
+        <label class="af">E-mail<input type="email" name="email" autocomplete="email" required></label>
+        <label class="af">Senha
+          <span class="pw"><input type="password" name="senha" autocomplete="current-password" required><button type="button" class="pw-eye" tabindex="-1">Mostrar</button></span>
+        </label>
+        <div class="auth-row">
+          <label class="chk"><input type="checkbox" name="lembrar" checked> Manter conectado</label>
+          <button type="button" class="auth-link" data-go="reset">Esqueci minha senha</button>
+        </div>
+        <div class="auth-msg" role="alert"></div>
+        <button type="submit" class="auth-btn">Entrar</button>
+        <p class="auth-switch">Ainda não tem conta? <button type="button" class="auth-link" data-go="signup">Criar conta</button></p>
+      </form>
+      <form id="form-signup" class="auth-form" hidden novalidate>
+        <h2>Criar conta</h2>
+        <p class="auth-sub">Leva menos de um minuto.</p>
+        <label class="af">Nome<input type="text" name="nome" autocomplete="name" required></label>
+        <label class="af">E-mail<input type="email" name="email" autocomplete="email" required></label>
+        <label class="af">Senha<span class="pw"><input type="password" name="senha" autocomplete="new-password" minlength="6" required><button type="button" class="pw-eye" tabindex="-1">Mostrar</button></span><small>Mínimo 6 caracteres.</small></label>
+        <label class="af">Confirmar senha<input type="password" name="senha2" autocomplete="new-password" required></label>
+        <div class="auth-msg" role="alert"></div>
+        <button type="submit" class="auth-btn">Criar conta</button>
+        <p class="auth-switch">Já tem conta? <button type="button" class="auth-link" data-go="login">Entrar</button></p>
+      </form>
+      <form id="form-reset" class="auth-form" hidden novalidate>
+        <h2>Redefinir senha</h2>
+        <p class="auth-sub">Enviaremos um link por e-mail.</p>
+        <label class="af">E-mail<input type="email" name="email" autocomplete="email" required></label>
+        <div class="auth-msg" role="alert"></div>
+        <button type="submit" class="auth-btn">Enviar link</button>
+        <p class="auth-switch"><button type="button" class="auth-link" data-go="login">Voltar</button></p>
+      </form>
     </div>
-    <!-- Tab 1: Geral -->
-    <div id="tab-geral" class="tab-panel active">
-      <div class="field-group">
-        <label for="f-name">Nome da Tarefa</label>
-        <input type="text" id="f-name" placeholder="Ex: FIXAÇÃO DE INFRAESTRUTURA" style="width:100%" />
-      </div>
-      <div class="field-row">
-        <div class="field-group">
-          <label for="f-dur">Duração (dias úteis)</label>
-          <input type="number" id="f-dur" min="0" value="5" />
-        </div>
-        <div class="field-group">
-          <label for="f-color">Cor da barra</label>
-          <input type="color" id="f-color" value="#2563eb" style="width:100%;height:34px;border-radius:5px;border:1px solid var(--border-2);cursor:pointer;" />
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field-group">
-          <label for="f-start">Início</label>
-          <input type="datetime-local" id="f-start" />
-        </div>
-        <div class="field-group">
-          <label for="f-end">Fim</label>
-          <input type="datetime-local" id="f-end" />
-        </div>
-      </div>
-      <div class="field-group">
-        <label for="f-notes">Notas / Observações</label>
-        <textarea id="f-notes" rows="3" style="width:100%;padding:7px 9px;border:1px solid var(--border-2);border-radius:5px;background:var(--surface);color:var(--text);font-family:inherit;font-size:13px;outline:none;resize:vertical;"></textarea>
-      </div>
-    </div>
-    <!-- Tab 2: Antecessores -->
-    <div id="tab-pred" class="tab-panel">
-      <p style="font-size:11.5px;color:var(--text-2);margin-bottom:4px;">Selecione as tarefas antecessoras desta tarefa:</p>
-      <div class="pred-list" id="pred-list">
-        <span style="color:var(--text-3);font-size:12px;">Nenhuma tarefa disponível</span>
-      </div>
-    </div>
-    <!-- Tab 3: Avançado -->
-    <div id="tab-adv" class="tab-panel">
-      <div class="field-group">
-        <label>% Completo</label>
-        <div class="range-row">
-          <input type="range" id="f-pct" min="0" max="100" value="0" />
-          <span class="range-val" id="f-pct-val">0%</span>
-        </div>
-      </div>
-      <div class="field-group">
-        <label for="f-resp">Responsável</label>
-        <input type="text" id="f-resp" placeholder="Nome do responsável" />
-      </div>
-      <div class="field-group">
-        <label for="f-type">Tipo</label>
-        <select id="f-type">
-          <option value="normal">Tarefa Normal</option>
-          <option value="marco">Marco</option>
-          <option value="fase">Fase</option>
-        </select>
-      </div>
-      <div id="marco-hint" style="display:none;padding:7px 10px;background:var(--accent-soft);border-radius:5px;font-size:11.5px;color:var(--accent);">
-        ◆ Marco: duração forçada = 0, renderizado como diamante no Gantt.
+  </main>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="hlogo"><span class="hlogo-mark"></span> Oreon Cronograma</div>
+  <div class="hflex"></div>
+  <div class="hactions">
+    <button class="btn-hdr primary" id="btn-nova-obra" onclick="abrirModalNova()">
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Nova Obra
+    </button>
+    <div id="user-menu">
+      <button id="user-btn" type="button">
+        <span class="ua" id="user-avatar">—</span>
+        <span id="user-nome">...</span>
+        <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
+      </button>
+      <div id="user-drop" hidden>
+        <div class="ud-head"><strong class="ud-name"></strong><span class="ud-mail"></span></div>
+        <button type="button" data-act="senha">Alterar senha por e-mail</button>
+        <button type="button" data-act="logout" class="ud-danger">Sair</button>
       </div>
     </div>
-    <div id="modal-footer">
-      <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
-      <button class="btn btn-primary" id="modal-save">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Salvar
-      </button>
+    <span id="sync-status" class="sync-local">Carregando...</span>
+  </div>
+</header>
+
+<!-- CONTEÚDO -->
+<div id="content" style="display:none">
+  <div class="page-title">Painel de Obras</div>
+  <div class="page-sub" id="page-sub">Gerencie seus cronogramas ativos</div>
+
+  <div id="alerta-semana" class="alerta-semana" style="display:none">
+    ⚠️ Algumas obras não receberam preenchimento nesta semana.
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="ativas">Ativas</button>
+    <button class="filter-btn" data-filter="todas">Todas</button>
+    <button class="filter-btn" data-filter="arquivadas">Arquivadas</button>
+    <div class="filter-search">
+      <input type="text" id="busca" placeholder="🔍 Buscar obra..." oninput="renderCards()">
+    </div>
+  </div>
+
+  <div class="obras-grid" id="obras-grid">
+    <div class="empty-state">
+      <div class="es-icon">📋</div>
+      <p>Carregando obras...</p>
     </div>
   </div>
 </div>
 
-<div id="gantt-tooltip"></div>
+<!-- MODAL NOVA OBRA -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h3 id="modal-title">Nova Obra</h3>
+    <div class="mfield">
+      <label>Nome da Obra *</label>
+      <input type="text" id="m-nome" placeholder="Ex: Condomínio Piemonte" />
+    </div>
+    <div class="mfield">
+      <label>Cliente / Contratante</label>
+      <input type="text" id="m-cliente" placeholder="Ex: Incorporadora XYZ" />
+    </div>
+    <div class="mfield">
+      <label>Supervisor Responsável</label>
+      <input type="text" id="m-supervisor" placeholder="Nome do responsável técnico" />
+    </div>
+    <div class="mfooter">
+      <button class="mbtn cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="mbtn ok" onclick="salvarObra()">Criar Obra</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
-<input type="file" id="file-input" accept=".json" style="display:none">
 
-
-<!-- Firebase (login e nuvem). Sem internet, o sistema segue em modo local. -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="cronograma.js"></script>
-<script src="cronograma-cloud.js"></script>
-
-<!-- Tema: alterna ícone sol/lua -->
 <script>
-(function() {
-  const btn = document.getElementById('btn-theme');
-  if (!btn) return;
-  function syncIcon() {
-    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const sun = document.getElementById('icon-theme-sun');
-    const moon = document.getElementById('icon-theme-moon');
-    if (sun) sun.style.display = dark ? 'none' : '';
-    if (moon) moon.style.display = dark ? '' : 'none';
+(function () {
+  const cfg = window.FIREBASE_CONFIG || {};
+  if (!cfg.apiKey) { document.getElementById('loading').classList.remove('show'); alert('firebase-config.js não encontrado.'); return; }
+
+  firebase.initializeApp(cfg);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+  auth.languageCode = 'pt';
+  try { db.enablePersistence({ synchronizeTabs: true }).catch(() => {}); } catch (e) {}
+
+  // ── refs ──
+  const userRef  = uid => db.collection('users').doc(uid);
+  const projsRef = uid => userRef(uid).collection('projetos');
+  const linksRef = () => db.collection('links');
+
+  // ── estado ──
+  let currentUser = null;
+  let obras = [];
+  let filtroAtivo = 'ativas';
+  let unsubObras = null;
+  let editingId = null;
+
+  // ── utils ──
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const semanaISO = d => {
+    const date = d ? new Date(d) : new Date();
+    date.setHours(0,0,0,0);
+    date.setDate(date.getDate() + 4 - (date.getDay() || 7));
+    const yearStart = new Date(date.getFullYear(), 0, 1);
+    const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+    return date.getFullYear() + '-S' + String(week).padStart(2, '0');
+  };
+  const semanaAtual = () => semanaISO();
+  const inicioSemana = () => {
+    const d = new Date(); d.setHours(0,0,0,0);
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() - day + 1);
+    return d;
+  };
+
+  function toast(msg, dur = 3000) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), dur);
   }
-  btn.addEventListener('click', function() { setTimeout(syncIcon, 50); });
-  syncIcon();
-  const obs = new MutationObserver(syncIcon);
-  obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+
+  const setSync = (k, label) => {
+    const el = document.getElementById('sync-status');
+    el.textContent = label;
+    el.className = { ok:'sync-ok', busy:'sync-busy', warn:'sync-warn', err:'sync-err', local:'sync-local' }[k] || 'sync-local';
+  };
+
+  // ── AUTH ──
+  const authOv = document.getElementById('auth-overlay');
+  const forms = {
+    login:  document.getElementById('form-login'),
+    signup: document.getElementById('form-signup'),
+    reset:  document.getElementById('form-reset'),
+  };
+  const loadingEl = document.getElementById('auth-loading');
+
+  const showForm = name => {
+    loadingEl.hidden = true;
+    Object.entries(forms).forEach(([k, f]) => {
+      f.hidden = k !== name;
+      f.querySelector('.auth-msg').textContent = '';
+      f.querySelector('.auth-msg').className = 'auth-msg';
+    });
+    const first = forms[name].querySelector('input:not([type=checkbox])');
+    setTimeout(() => first && first.focus(), 50);
+  };
+  const openAuth = form => { authOv.classList.remove('closing'); authOv.style.display = ''; showForm(form); };
+  const closeAuth = () => { authOv.classList.add('closing'); setTimeout(() => { authOv.style.display = 'none'; }, 250); };
+
+  authOv.addEventListener('click', e => {
+    const go = e.target.closest('[data-go]');
+    if (go) showForm(go.dataset.go);
+    const eye = e.target.closest('.pw-eye');
+    if (eye) { const inp = eye.previousElementSibling; const show = inp.type === 'password'; inp.type = show ? 'text' : 'password'; eye.textContent = show ? 'Ocultar' : 'Mostrar'; }
+  });
+
+  const ERR = {
+    'auth/invalid-email':'E-mail inválido.','auth/user-not-found':'E-mail ou senha incorretos.',
+    'auth/wrong-password':'E-mail ou senha incorretos.','auth/invalid-credential':'E-mail ou senha incorretos.',
+    'auth/invalid-login-credentials':'E-mail ou senha incorretos.','auth/missing-password':'Informe a senha.',
+    'auth/email-already-in-use':'Já existe uma conta com este e-mail.','auth/weak-password':'Mínimo de 6 caracteres.',
+    'auth/too-many-requests':'Muitas tentativas. Aguarde e tente de novo.',
+    'auth/network-request-failed':'Sem conexão com a internet.',
+  };
+  const errMsg = e => ERR[e && e.code] || 'Não foi possível concluir. (' + (e && e.code || 'erro') + ')';
+  const busy = (form, on, label) => { const b = form.querySelector('.auth-btn'); b.disabled = on; if (on) { b.dataset.l = b.textContent; b.textContent = label; } else if (b.dataset.l) b.textContent = b.dataset.l; };
+  const msgAuth = (form, text, ok) => { const m = form.querySelector('.auth-msg'); m.textContent = text; m.className = 'auth-msg' + (text ? (ok ? ' ok' : ' err') : ''); };
+  const emailOk = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+  forms.login.addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = forms.login, email = f.email.value.trim(), senha = f.senha.value;
+    if (!emailOk(email)) return msgAuth(f, 'Informe um e-mail válido.');
+    if (!senha) return msgAuth(f, 'Informe a senha.');
+    msgAuth(f, ''); busy(f, true, 'Entrando...');
+    try {
+      await auth.setPersistence(f.lembrar.checked ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION);
+      await auth.signInWithEmailAndPassword(email, senha);
+    } catch (err) { msgAuth(f, errMsg(err)); busy(f, false); }
+  });
+
+  forms.signup.addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = forms.signup, nome = f.nome.value.trim(), email = f.email.value.trim(), senha = f.senha.value;
+    if (nome.length < 2) return msgAuth(f, 'Informe seu nome.');
+    if (!emailOk(email)) return msgAuth(f, 'Informe um e-mail válido.');
+    if (senha.length < 6) return msgAuth(f, 'Mínimo 6 caracteres.');
+    if (senha !== f.senha2.value) return msgAuth(f, 'Senhas não conferem.');
+    msgAuth(f, ''); busy(f, true, 'Criando conta...');
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(email, senha);
+      await cred.user.updateProfile({ displayName: nome });
+      await userRef(cred.user.uid).set({ nome, email, criadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      // migrar o cronograma antigo (users/{uid}/projetos/principal) se existir
+      await migrarProjeto(cred.user.uid);
+    } catch (err) { msgAuth(f, errMsg(err)); busy(f, false); }
+  });
+
+  forms.reset.addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = forms.reset, email = f.email.value.trim();
+    if (!emailOk(email)) return msgAuth(f, 'Informe um e-mail válido.');
+    busy(f, true, 'Enviando...');
+    try { await auth.sendPasswordResetEmail(email); msgAuth(f, 'Link enviado! Verifique seu e-mail e o spam.', true); }
+    catch (err) { msgAuth(f, errMsg(err)); }
+    busy(f, false);
+  });
+
+  // ── USER MENU ──
+  document.getElementById('user-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    const d = document.getElementById('user-drop');
+    d.hidden = !d.hidden;
+  });
+  document.addEventListener('click', () => { document.getElementById('user-drop').hidden = true; });
+  document.getElementById('user-drop').addEventListener('click', async e => {
+    const act = e.target.dataset.act; if (!act) return;
+    document.getElementById('user-drop').hidden = true;
+    if (act === 'senha') {
+      try { await auth.sendPasswordResetEmail(currentUser.email); toast('Link de alteração de senha enviado para ' + currentUser.email); }
+      catch (err) { toast(errMsg(err)); }
+    }
+    if (act === 'logout') { if (unsubObras) unsubObras(); await auth.signOut(); location.reload(); }
+  });
+
+  function preencherUser(u) {
+    const nome = u.displayName || u.email.split('@')[0];
+    const ini = nome.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+    document.getElementById('user-avatar').textContent = ini;
+    document.getElementById('user-nome').textContent = nome.split(' ')[0];
+    document.querySelector('.ud-name').textContent = nome;
+    document.querySelector('.ud-mail').textContent = u.email;
+  }
+
+  // ── MIGRAÇÃO DO PROJETO ANTIGO ──
+  let _migrando = false;
+  async function migrarProjeto(uid) {
+    if (_migrando) return;
+    _migrando = true;
+    try {
+      const principalSnap = await projsRef(uid).doc('principal').get();
+      if (!principalSnap.exists) { _migrando = false; return; }
+      const dados = principalSnap.data().data || {};
+      if (!dados.tasks || !dados.tasks.length) { _migrando = false; return; }
+      const nomeObra = dados.projectName || 'Obra importada';
+      const existentes = await projsRef(uid).orderBy('criadoEm', 'asc').limit(1).get();
+      // Só migra se não há obras ainda (para não duplicar em logins subsequentes)
+      if (!existentes.empty) { _migrando = false; return; }
+      await projsRef(uid).add({
+        nome: nomeObra,
+        cliente: '',
+        supervisorName: dados.supervisorName || '',
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        arquivada: false,
+        data: dados,
+        semanaAtual: semanaAtual(),
+        ultimoEnvio: null,
+      });
+      toast('Cronograma anterior importado com sucesso!', 4000);
+    } catch (e) {
+      console.warn('[migração]', e);
+    }
+    _migrando = false;
+  }
+
+  // ── CARREGAR OBRAS (tempo real) ──
+  function escutarObras(uid) {
+    setSync('busy', 'Carregando...');
+    if (unsubObras) unsubObras();
+    unsubObras = projsRef(uid)
+      .orderBy('criadoEm', 'desc')
+      .onSnapshot(async snap => {
+        obras = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Buscar semanaUltimoEnvio de cada obra a partir da coleção de links
+        try {
+          const linksSnap = await linksRef().where('ownerUid', '==', uid).get();
+          const semanasPorObra = {};
+          linksSnap.docs.forEach(d => {
+            const { obraId, semanaUltimoEnvio } = d.data();
+            if (obraId && semanaUltimoEnvio) semanasPorObra[obraId] = semanaUltimoEnvio;
+          });
+          obras = obras.map(o => ({
+            ...o,
+            semanaUltimoEnvio: semanasPorObra[o.id] || o.semanaUltimoEnvio || null,
+          }));
+        } catch (e) { console.warn('[painel] links:', e); }
+        setSync('ok', 'Sincronizado');
+        renderCards();
+        verificarAlertas();
+      }, err => { console.error('[obras]', err); setSync('err', 'Erro'); });
+  }
+
+  // ── RENDERIZAR CARDS ──
+  let filtroDropAberto = null;
+  window.renderCards = function() {
+    const grid = document.getElementById('obras-grid');
+    const busca = document.getElementById('busca').value.toLowerCase();
+
+    let lista = obras.filter(o => {
+      if (busca && !o.nome.toLowerCase().includes(busca) && !(o.cliente || '').toLowerCase().includes(busca) && !(o.supervisorName || '').toLowerCase().includes(busca)) return false;
+      if (filtroAtivo === 'ativas') return !o.arquivada;
+      if (filtroAtivo === 'arquivadas') return o.arquivada;
+      return true;
+    });
+
+    const semana = semanaAtual();
+    const hoje = new Date();
+
+    grid.innerHTML = '';
+
+    // Botão nova obra
+    const divNova = document.createElement('div');
+    divNova.className = 'card-nova';
+    divNova.onclick = abrirModalNova;
+    divNova.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Nova Obra</span>`;
+    grid.appendChild(divNova);
+
+    if (lista.length === 0) {
+      const emp = document.createElement('div');
+      emp.className = 'empty-state';
+      emp.innerHTML = `<div class="es-icon">📋</div><p>${filtroAtivo === 'arquivadas' ? 'Nenhuma obra arquivada.' : 'Nenhuma obra ainda.<br>Clique em <strong>Nova Obra</strong> para começar.'}</p>`;
+      grid.appendChild(emp);
+      return;
+    }
+
+    lista.forEach(obra => {
+      const dados = obra.data || {};
+      const tasks = dados.tasks || [];
+      let pctGeral = 0;
+      if (tasks.length) {
+        let totalPeso = 0, totalPonderado = 0;
+        tasks.forEach(e => {
+          const startMs = e.start ? new Date(e.start).getTime() : NaN;
+          const endMs   = e.end   ? new Date(e.end).getTime()   : NaN;
+          const dur = (!isNaN(startMs) && !isNaN(endMs)) ? Math.max(1, (endMs - startMs) / 86400000) : 1;
+          totalPeso += dur;
+          totalPonderado += (e.percentComplete || 0) * dur;
+        });
+        pctGeral = totalPeso > 0 ? Math.round(totalPonderado / totalPeso) : 0;
+      }
+
+      // Verificar status
+      let statusLabel = 'No prazo';
+      let statusClass = 'status-prazo';
+      if (obra.arquivada) { statusLabel = 'Arquivada'; statusClass = 'status-arquivada'; }
+      else if (pctGeral >= 100) { statusLabel = 'Concluída'; statusClass = 'status-concluida'; }
+      else {
+        const atrasadas = tasks.filter(t => {
+          if (!t.end) return false;
+          return new Date(t.end) < hoje && (t.percentComplete || 0) < 100;
+        });
+        if (atrasadas.length) { statusLabel = 'Atrasada'; statusClass = 'status-atrasada'; }
+      }
+
+      // Badge de envio da semana
+      let badgeHtml = '';
+      const enviouSemana = obra.semanaUltimoEnvio === semana;
+      if (!obra.arquivada) {
+        if (enviouSemana) {
+          badgeHtml = `<div class="card-link-badge ok">✓ Atualizado esta semana</div>`;
+        } else {
+          const sexta = diasParaSexta();
+          if (sexta === 0) badgeHtml = `<div class="card-link-badge sem-envio">⚠️ Sexta — sem envio esta semana</div>`;
+          else badgeHtml = `<div class="card-link-badge">📅 ${sexta}d para sexta</div>`;
+        }
+      }
+
+      // Meta: nº tarefas e intervalo de datas
+      const comDatas = tasks.filter(t => t.start && t.end);
+      let dataRange = '—';
+      if (comDatas.length) {
+        const ini = new Date(Math.min(...comDatas.map(t => new Date(t.start))));
+        const fim = new Date(Math.max(...comDatas.map(t => new Date(t.end))));
+        dataRange = ini.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' – ' + fim.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+      }
+
+      const pctClass = pctGeral >= 100 ? 'done' : (statusClass === 'status-atrasada' ? 'atrasada' : '');
+
+      const card = document.createElement('div');
+      card.className = 'obra-card' + (obra.arquivada ? ' arquivada' : '');
+      card.dataset.id = obra.id;
+      card.innerHTML = `
+        <div class="card-top">
+          <span class="card-status ${statusClass}">${esc(statusLabel)}</span>
+          <button class="card-menu-btn" data-menu="${obra.id}" title="Opções" onclick="toggleMenu(event,'${obra.id}')">⋯</button>
+        </div>
+        <div>
+          <div class="card-nome">${esc(obra.nome)}</div>
+          ${obra.cliente ? `<div class="card-cliente">${esc(obra.cliente)}</div>` : ''}
+          ${obra.arquivada ? '<span class="badge-arquivada">ARQUIVADA</span>' : ''}
+        </div>
+        <div class="card-pct-wrap">
+          <div class="pct-row"><span class="pct-label">Progresso geral</span><span class="pct-val">${pctGeral}%</span></div>
+          <div class="pct-bar"><div class="pct-fill ${pctClass}" style="width:${pctGeral}%"></div></div>
+        </div>
+        <div class="card-meta">
+          <span class="meta-item">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3" width="13" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 1.5v3M11 1.5v3M1.5 7h13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            ${dataRange}
+          </span>
+          <span class="meta-item">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v4l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            ${tasks.length} etapa${tasks.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div class="card-bottom">${badgeHtml}</div>`;
+
+      // Abrir cronograma ao clicar (exceto no botão de menu)
+      card.addEventListener('click', e => {
+        if (e.target.closest('.card-menu-btn') || e.target.closest('.card-drop')) return;
+        abrirObra(obra.id);
+      });
+
+      grid.appendChild(card);
+    });
+
+  };
+
+  function diasParaSexta() {
+    const hoje = new Date().getDay(); // 0=dom, 5=sexta
+    if (hoje === 5) return 0;
+    return ((5 - hoje + 7) % 7) || 7;
+  }
+
+  function verificarAlertas() {
+    const semFiltro = obras.filter(o => !o.arquivada && o.semanaUltimoEnvio !== semanaAtual());
+    document.getElementById('alerta-semana').style.display =
+      semFiltro.length > 0 && diasParaSexta() <= 1 ? '' : 'none';
+  }
+
+  // ── MENU DO CARD ──
+  window.toggleMenu = function(e, id) {
+    e.stopPropagation();
+    // Fechar qualquer menu aberto
+    document.querySelectorAll('.card-drop').forEach(d => d.remove());
+    if (filtroDropAberto === id) { filtroDropAberto = null; return; }
+    filtroDropAberto = id;
+    const obra = obras.find(o => o.id === id);
+    if (!obra) return;
+
+    const drop = document.createElement('div');
+    drop.className = 'card-drop';
+    drop.innerHTML = `
+      <button data-act="abrir">📂 Abrir cronograma</button>
+      <button data-act="link">🔗 Gerar link desta semana</button>
+      <button data-act="editar">✏️ Renomear / editar</button>
+      <div class="sep"></div>
+      <button data-act="${obra.arquivada ? 'desarquivar' : 'arquivar'}">${obra.arquivada ? '📤 Desarquivar' : '📦 Arquivar obra'}</button>
+    `;
+    drop.addEventListener('click', async ev => {
+      ev.stopPropagation();
+      const act = ev.target.closest('button')?.dataset.act;
+      drop.remove(); filtroDropAberto = null;
+      if (act === 'abrir') abrirObra(id);
+      if (act === 'link') gerarLink(id);
+      if (act === 'editar') abrirModalEditar(id);
+      if (act === 'arquivar') arquivarObra(id, true);
+      if (act === 'desarquivar') arquivarObra(id, false);
+    });
+
+    const btn = e.target.closest('.card-menu-btn');
+    btn.closest('.obra-card').style.position = 'relative';
+    btn.closest('.obra-card').appendChild(drop);
+
+    setTimeout(() => document.addEventListener('click', () => { drop.remove(); filtroDropAberto = null; }, { once: true }), 10);
+  };
+
+  // ── AÇÕES ──
+  window.abrirObra = function(id) {
+    // Abre o cronograma passando o ID do projeto pela URL
+    window.location.href = 'cronograma.html?obra=' + encodeURIComponent(id);
+  };
+
+  window.abrirModalNova = function() {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'Nova Obra';
+    document.getElementById('m-nome').value = '';
+    document.getElementById('m-cliente').value = '';
+    document.getElementById('m-supervisor').value = '';
+    document.querySelector('.mbtn.ok').textContent = 'Criar Obra';
+    document.getElementById('modal-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('m-nome').focus(), 50);
+  };
+
+  function abrirModalEditar(id) {
+    const obra = obras.find(o => o.id === id);
+    if (!obra) return;
+    editingId = id;
+    document.getElementById('modal-title').textContent = 'Editar Obra';
+    document.getElementById('m-nome').value = obra.nome || '';
+    document.getElementById('m-cliente').value = obra.cliente || '';
+    document.getElementById('m-supervisor').value = (obra.data && obra.data.supervisorName) || '';
+    document.querySelector('.mbtn.ok').textContent = 'Salvar';
+    document.getElementById('modal-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('m-nome').focus(), 50);
+  }
+
+  window.fecharModal = function() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  };
+
+  window.salvarObra = async function() {
+    const nome = document.getElementById('m-nome').value.trim();
+    const cliente = document.getElementById('m-cliente').value.trim();
+    const supervisor = document.getElementById('m-supervisor').value.trim();
+    if (!nome) { document.getElementById('m-nome').focus(); return; }
+    const isEdit = !!editingId;
+    document.querySelector('.mbtn.ok').disabled = true;
+    document.querySelector('.mbtn.ok').textContent = 'Salvando...';
+    try {
+      if (editingId) {
+        // Editar
+        const obra = obras.find(o => o.id === editingId);
+        const dadosAtual = obra?.data || {};
+        await projsRef(currentUser.uid).doc(editingId).update({
+          nome,
+          cliente,
+          'data.supervisorName': supervisor,
+          'data.projectName': nome,
+        });
+        toast('Obra atualizada!');
+      } else {
+        // Nova
+        await projsRef(currentUser.uid).add({
+          nome,
+          cliente,
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          arquivada: false,
+          semanaUltimoEnvio: null,
+          data: {
+            projectName: nome,
+            supervisorName: supervisor,
+            tasks: [],
+            nextId: 1,
+            relatorios: [],
+            relNextId: 1,
+          },
+        });
+        toast('Obra criada!');
+      }
+      fecharModal();
+    } catch (e) { toast('Erro ao salvar: ' + e.message); }
+    document.querySelector('.mbtn.ok').textContent = isEdit ? 'Salvar' : 'Criar Obra';
+    document.querySelector('.mbtn.ok').disabled = false;
+  };
+
+  window.arquivarObra = async function(id, arquivar) {
+    if (arquivar && !confirm('Arquivar esta obra? Você pode reativá-la depois.')) return;
+    try {
+      await projsRef(currentUser.uid).doc(id).update({ arquivada: arquivar });
+      toast(arquivar ? 'Obra arquivada.' : 'Obra reativada.');
+    } catch (e) { toast('Erro: ' + e.message); }
+  };
+
+  // ── GERAR LINK SEMANAL ──
+  window.gerarLink = async function(id) {
+    const obra = obras.find(o => o.id === id);
+    if (!obra) return;
+    const uid = currentUser.uid;
+
+    // Verificar se já existe link para esta obra
+    try {
+      const existing = await linksRef()
+        .where('obraId', '==', id)
+        .where('ownerUid', '==', uid)
+        .get();
+
+      let token;
+      const tasks = (obra.data && obra.data.tasks) || [];
+      const etapas = tasks.map(t => ({
+        id: t.id,
+        nome: t.name,
+        percentComplete: t.percentComplete || 0,
+        responsavel: t.responsavel || '',
+        start: t.start || null,
+        end: t.end || null,
+      }));
+
+      if (!existing.empty) {
+        token = existing.docs[0].id;
+        await linksRef().doc(token).update({
+          etapas,
+          obraNome: obra.nome,
+          supervisorName: (obra.data && obra.data.supervisorName) || '',
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        toast('Link já existe — atualizado e copiado!');
+      } else {
+        // Gerar token único
+        token = uid.substring(0, 4) + Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+        await linksRef().doc(token).set({
+          obraId: id,
+          ownerUid: uid,
+          obraNome: obra.nome,
+          cliente: obra.cliente || '',
+          supervisorName: (obra.data && obra.data.supervisorName) || '',
+          etapas,
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          semanaUltimoEnvio: null,
+          usado: false,
+          envios: [],
+        });
+        toast('Link gerado!');
+      }
+
+      const baseUrl = location.origin + location.pathname.replace(/[^/]*$/, '');
+      const link = baseUrl + 'preencher.html?t=' + token;
+
+      // Copiar para área de transferência
+      try {
+        await navigator.clipboard.writeText(link);
+      } catch (e) {
+        // fallback
+        const el = document.createElement('textarea');
+        el.value = link; document.body.appendChild(el); el.select();
+        document.execCommand('copy'); document.body.removeChild(el);
+      }
+
+      // Mensagem para WhatsApp
+      const msg = '🏗️ *Relatório Semanal — ' + obra.nome + '*\n\nOlá equipe! Por favor preencham o andamento pelo link abaixo:\n\n' + link;
+      const wpUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
+
+      abrirModalLink(link, wpUrl);
+    } catch (e) {
+      console.error('[link]', e);
+      toast('Erro ao gerar link: ' + e.message);
+    }
+  };
+
+  function proximaSegunda() {
+    const d = new Date();
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() + (8 - day));
+    d.setHours(23, 59, 59, 0);
+    return d.toISOString();
+  }
+
+  // ── FILTROS ──
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filtroAtivo = btn.dataset.filter;
+      renderCards();
+    });
+  });
+
+  // ── MODAL OVERLAY CLICK ──
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) fecharModal();
+  });
+
+  // ── AUTH STATE ──
+  auth.onAuthStateChanged(async user => {
+    document.getElementById('loading').classList.remove('show');
+    if (user) {
+      currentUser = user;
+      preencherUser(user);
+      await migrarProjeto(user.uid);
+      document.getElementById('auth-overlay').style.display = 'none';
+      document.getElementById('content').style.display = '';
+      escutarObras(user.uid);
+    } else {
+      currentUser = null;
+      document.getElementById('content').style.display = 'none';
+      document.getElementById('auth-overlay').style.display = '';
+      showForm('login');
+    }
+  });
+
+
+  let _linkGeradoUrl = '';
+  let _linkGeradoWpp = '';
+
+  function abrirModalLink(linkUrl, wppUrl) {
+    _linkGeradoUrl = linkUrl;
+    _linkGeradoWpp = wppUrl;
+    document.getElementById('modal-link-input').value = linkUrl;
+    document.getElementById('modal-link-overlay').classList.add('ativo');
+  }
+  function fecharModalLink() {
+    document.getElementById('modal-link-overlay').classList.remove('ativo');
+  }
+  function copiarLinkModal() {
+    const ta = document.getElementById('modal-link-input');
+    ta.select();
+    document.execCommand('copy');
+    const btn = document.getElementById('btn-copiar-link');
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = 'Copiar link', 2000);
+  }
+  function abrirWppModal() {
+    if (_linkGeradoWpp) window.open(_linkGeradoWpp, '_blank');
+  }
+
+  // Fechar drops ao clicar fora
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.card-drop').forEach(d => d.remove());
+    filtroDropAberto = null;
+  });
 })();
 </script>
+
+<!-- Modal link gerado -->
+<div id="modal-link-overlay">
+  <div id="modal-link-box">
+    <h3>📋 Link do Relatório</h3>
+    <p>Copie o link abaixo ou envie direto pelo WhatsApp:</p>
+    <textarea id="modal-link-input" rows="3" readonly></textarea>
+    <div class="modal-link-btns">
+      <button id="btn-copiar-link" onclick="copiarLinkModal()">Copiar link</button>
+      <button id="btn-wpp-link" onclick="abrirWppModal()">Enviar WhatsApp</button>
+      <button id="btn-fechar-link" onclick="fecharModalLink()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
