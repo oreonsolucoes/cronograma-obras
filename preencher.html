@@ -459,6 +459,8 @@
   }
 
   window.enviarRelatorio = async function() {
+    const nomeResponde = 'equipe';
+
     const btn = document.getElementById('btn-enviar');
     btn.disabled = true;
 
@@ -472,7 +474,7 @@
         btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Enviando...';
       }
 
-      const urlsPorEtapa = await uploadFotosParaDrive('equipe');
+      const urlsPorEtapa = await uploadFotosParaDrive(nomeResponde);
 
       // 2. Montar dados das etapas (sem base64 — só URLs do Drive)
       btn.innerHTML = '<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Salvando relatório...';
@@ -492,12 +494,10 @@
 
       const agora = new Date().toISOString();
 
-      const obsGeral = document.getElementById('obs-geral').value.trim();
-
       // 3. Gravar no documento do link (envios acumulados)
       await db.collection('links').doc(token).update({
         envios: firebase.firestore.FieldValue.arrayUnion({
-          obsGeral,
+          obsGeral:  document.getElementById('obs-geral').value.trim(),
           etapas,
           enviadoEm: agora,
           semana:    linkData.semana,
@@ -513,7 +513,7 @@
         semanaUltimoEnvio: linkData.semana,
         [`enviosSemana.${linkData.semana}`]: firebase.firestore.FieldValue.arrayUnion({
           token,
-          obsGeral,
+          obsGeral:  document.getElementById('obs-geral').value.trim(),
           etapas:    etapas.map(e => ({
             id: e.id, nome: e.nome,
             pctNovo: e.pctNovo, obs: e.obs,
@@ -526,9 +526,9 @@
       document.getElementById('tela-form').style.display = 'none';
       document.getElementById('tela-sucesso').style.display = '';
 
-      let succMsg = 'Relatório enviado com sucesso para a semana de ' + semanaLabel(linkData.semana) + '!';
+      let succMsg = 'Informações registradas com sucesso para a semana de ' + semanaLabel(linkData.semana) + '.';
       if (temFotos && urlsPorEtapa._semUrls) {
-        succMsg += ' As fotos foram enviadas ao Google Drive.';
+        succMsg += ' As fotos foram enviadas ao Google Drive (o link será gerado em instantes).';
       } else if (temFotos && !APPS_SCRIPT_URL) {
         succMsg += ' Atenção: as fotos não foram enviadas pois o Apps Script ainda não está configurado.';
       }
