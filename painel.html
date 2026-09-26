@@ -632,8 +632,21 @@
     if (unsubObras) unsubObras();
     unsubObras = projsRef(uid)
       .orderBy('criadoEm', 'desc')
-      .onSnapshot(snap => {
+      .onSnapshot(async snap => {
         obras = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Buscar semanaUltimoEnvio de cada obra a partir da coleção de links
+        try {
+          const linksSnap = await linksRef().where('ownerUid', '==', uid).get();
+          const semanasPorObra = {};
+          linksSnap.docs.forEach(d => {
+            const { obraId, semanaUltimoEnvio } = d.data();
+            if (obraId && semanaUltimoEnvio) semanasPorObra[obraId] = semanaUltimoEnvio;
+          });
+          obras = obras.map(o => ({
+            ...o,
+            semanaUltimoEnvio: semanasPorObra[o.id] || o.semanaUltimoEnvio || null,
+          }));
+        } catch (e) { console.warn('[painel] links:', e); }
         setSync('ok', 'Sincronizado');
         renderCards();
         verificarAlertas();
@@ -680,7 +693,9 @@
       if (tasks.length) {
         let totalPeso = 0, totalPonderado = 0;
         tasks.forEach(e => {
-          const dur = Math.max(1, (new Date(e.end) - new Date(e.start)) / 86400000);
+          const startMs = e.start ? new Date(e.start).getTime() : NaN;
+          const endMs   = e.end   ? new Date(e.end).getTime()   : NaN;
+          const dur = (!isNaN(startMs) && !isNaN(endMs)) ? Math.max(1, (endMs - startMs) / 86400000) : 1;
           totalPeso += dur;
           totalPonderado += (e.percentComplete || 0) * dur;
         });
